@@ -78,6 +78,8 @@ parser = argparse.ArgumentParser(description = "read a SCAPE directory and " +
                     "output to a series of MINC volumes, one per timeslice")
 parser.add_argument('-v', '--verbose', help="be verbose",
                     action="store_true", default=True)
+parser.add_argument('--debug', help="be very verbose",
+                    action="store_true", default=False)
 parser.add_argument('-c', '--clobber', help="clobber existing files",
                     action="store_true", default=False)
 parser.add_argument('-f', '--fake', help="do a dry run (echo cmds only)",
@@ -108,7 +110,7 @@ mat_contents = sio.loadmat(args.indir + "_info.mat")
 framerate = mat_contents['info']['camera'][0][0]['framerate'][0][0][0][0]
 scanrate = mat_contents['info']['daq'][0][0]['scanRate'][0][0][0][0]
 
-if args.verbose:
+if args.debug:
     print "MAT contents"
     pprint.pprint(mat_contents)
 
@@ -134,7 +136,7 @@ for line in open(ini_meta, "rU"):
         print "[" + section + "] NAME: " + name + " VAL: " + str(val)
         ini_data[section, name] = val
 
-if args.verbose:
+if args.debug:
     print "INI contents"
     pprint.pprint(ini_data)
 
@@ -216,7 +218,7 @@ for t in range(start_time, stop_time):
 
 
     # check if already done
-    if(mcomplete(outfile)):
+    if(mcomplete(outfile) and not args.clobber):
         print " - exists, skipping"
 
     else:
@@ -230,10 +232,11 @@ for t in range(start_time, stop_time):
             '-range', str(args.floor), str(args.ceil),
             '-orange', str(args.floor), str(args.ceil),
             '-skip', str(seek),
+            '-sattribute', ":history=" + history,
             outfile,
             str(1), str(zsize), str(ysize), str(xsize)]
 
-        #print cmd
+        # print cmd
         if args.verbose:
             print "CMD: " + " ".join(str(x) for x in cmd)
 
@@ -243,6 +246,15 @@ for t in range(start_time, stop_time):
                 raw.stdin.write(block)
             except:
                 print " - rawtominc appears full " + str(stop_spool_idx)
+
+        # add ini_data attributes
+        cmd = ['minc_modify_header']
+        for c in ini_data:
+            cmd.extend(['-sappend', "ini_data:" + c[0] + '-' + c[1] + '=' + ini_data[c]])
+        cmd.extend(['-sappend', "mat_data:experiment_notes=" + str(mat_contents['info']['experiment_notes'][0][0][0])])
+        cmd.extend(['-sappend', "mat_data:scanStartTimeApprox=" + str(mat_contents['info']['scanStartTimeApprox'][0][0][0])])
+        cmd.append(outfile)
+        do_cmd(cmd)
 
     elapsed_time = time.time() - elapsed_start
     print " = Done -- took " + str(elapsed_time) + "s " + \
