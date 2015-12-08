@@ -86,6 +86,7 @@ parser.add_argument('--floor', type=float, help="lower bound of input data")
 parser.add_argument('--ceil', type=float, help="upper bound of input data")
 parser.add_argument('--start_time', type=int, help="time slice to start at")
 parser.add_argument('--stop_time', type=int, help="time slice to stop at")
+parser.add_argument('--zstep', type=float, help="zstep - ideally automatic, use this to override")
 parser.add_argument("indir", help="the input SCAPE directory")
 parser.add_argument("outdir", help="the output MINC/HDF5 directory")
 args = parser.parse_args()
@@ -185,8 +186,12 @@ if args.verbose:
 
 
 # create the MINC files, one volume per time step
-starts = (0,0,0,0);
-steps = (1,1,1,0.2);
+starts = [0,0,0,0];
+steps = [1,1,1,0.2];
+
+if args.zstep is not None:
+    steps[2] = str(args.zstep)
+
 for t in range(start_time, stop_time):
     # check how long this will take
     elapsed_start = time.time()
