@@ -30,13 +30,14 @@
 #  define TRUE 1
 #endif
 
-#define WORLD_NDIMS 3
+#define WORLD_NDIMS 4
 #define SQR2(x) ((x) * (x))
 
 /* function prototypes */
 static void print_version_info(void);
 
 static int verbose = FALSE;
+static int debug = FALSE;
 static int clobber = FALSE;
 static int is_signed = FALSE;
 static nc_type dtype = NC_FLOAT;
@@ -48,6 +49,8 @@ static ArgvInfo argTable[] = {
     "print version info and exit"},
    {"-verbose", ARGV_CONSTANT, (char *)TRUE, (char *)&verbose,
     "Print out extra information."},
+   {"-debug", ARGV_CONSTANT, (char *)TRUE, (char *)&debug,
+    "Print out debugging information."},
    {"-clobber", ARGV_CONSTANT, (char *)TRUE, (char *)&clobber,
     "Clobber existing files."},
 
@@ -136,17 +139,17 @@ int main(int argc, char *argv[]){
    get_volume_sizes(in_vol, in_sizes);
 
    // setup output volume
-   out_sizes[0] = in_sizes[0] * in_sizes[1] * in_sizes[2];
+   out_sizes[2] = in_sizes[0] * in_sizes[1] * in_sizes[2];
    out_sizes[1] = in_sizes[0] * in_sizes[1] * in_sizes[2];
-   out_sizes[2] = 1;
+   out_sizes[0] = 1;
 
-   out_steps[0] = 1;
-   out_steps[1] = 1;
    out_steps[2] = 1;
+   out_steps[1] = 1;
+   out_steps[0] = 1;
 
-   out_starts[0] = -(out_sizes[0]/2);
+   out_starts[2] = -(out_sizes[0]/2);
    out_starts[1] = -(out_sizes[1]/2);
-   out_starts[2] = -(out_sizes[2]/2);
+   out_starts[0] = -(out_sizes[2]/2);
 
    if(verbose){
       fprintf(stdout, " | Output file:    %s\n", out_fn);
@@ -176,7 +179,6 @@ int main(int argc, char *argv[]){
                for(jj = 0; jj < in_sizes[1]; jj++){
                   for(kk = 0; kk < in_sizes[2]; kk++){
 
-
                      ssum1 = 0;
                      ssum2 = 0;
                      ssum_prd = 0;
@@ -192,9 +194,7 @@ int main(int argc, char *argv[]){
                      denom = sqrt(ssum1 * ssum2);
                      xcorr = (denom == 0.0) ? 0.0 : ssum_prd / denom;
 
-                     set_volume_real_value(out_vol, c1, c2, 0, 0, 0, xcorr);
-
-                     fprintf(stdout, "%g\n", xcorr);
+                     set_volume_real_value(out_vol, 0, c1, c2, 0, 0, xcorr);
 
                      if(xcorr > max){
                         max = xcorr;
@@ -208,7 +208,7 @@ int main(int argc, char *argv[]){
                   }
                }
 
-            fprintf(stdout, "[%d/%d]\n", c1, out_sizes[0]);
+            fprintf(stdout, "[%d/%d]\n", c1, out_sizes[2]);
             c1++;
             }
          }
