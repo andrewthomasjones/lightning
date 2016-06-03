@@ -17,33 +17,44 @@ library(capushe)
 ### Enable Just In Time Compiling, for ????MAYBE???? more speed.
 enableJIT(3)
 
+args <- commandArgs(trailingOnly = TRUE)
+
+indir <- args[1]
+FROM <- as.numeric(args[2])
+TO <- as.numeric(args[3])
+
+print(c(indir, FROM, TO))
+
+### Set where the slices are
+setwd(indir)
+
 # SPLINE FITTING --------------------------------------
 
 ### Fit Splines to the time series in each of the slice files (ss loops over slices)
 for (ss in 1:150) {
-  ### Set where the slices are
-  # setwd("C:/Users/uqhngu10/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11/03-chunk/NII") 
-  setwd("~/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11/03-chunk/NII")
-  
+
   ### Declare what files to load in
   ### Remove time points that do not look stationary
   file_list <- list.files()
   file_list <- file_list[grep('.nii',file_list)]
   file_number <- as.numeric(substr(file_list,7,12))
-  
+
   ### These lines are kind of data dependent. I've determined what works for F11, F03, and F04.
-  file_list <- file_list[which(file_number>2000 & file_number<5000)] # F11
-  # file_list <- file_list[which(file_number>500 & file_number<=3300)] # F03 and F04
-  file_number <- as.numeric(substr(file_list,7,12)) - 2000 # - 500 is F03 and F04 dependent, for F11 it would be - 2000.
-  
+  ## FROM and TO determine the start and end points of the trimming
+  #FROM <- 500
+  #TO <- 3300
+
+  file_list <- file_list[which(file_number>FROM & file_number<=TO)]
+  file_number <- as.numeric(substr(file_list,7,12)) - FROM
+
   file_number.old <- file_number
   max_file <- max(file_number)
   file_number <- (file_number-1)*340 + ss
-  
+
   ### Declare number of time slices left and initialize list
   N <- length(file_number)
   full_array <- list()
-  
+
   ### Read in 75th Z slice
   for (ii in 1:N) {
     file_name <- substring(file_list[ii],1,12)
@@ -52,10 +63,10 @@ for (ss in 1:150) {
     full_array[[ii]] <- NIFTI
     print(c('reading',ss,ii,ii/N))
   }
-  
+
   ### Combine all of the time slices
   full_array <- abind(full_array,along=3)
-  
+
   ### Store data into matrix instead of array
   count <- 0
   full_mat <- matrix(NA,prod(170*70),N)
@@ -66,14 +77,14 @@ for (ss in 1:150) {
       print(c('storing',ss,count))
     }
   }
-  
+
   ### Detrend data
   for (ii in 1:(170*70)) {
     full_mat[ii,] <- full_mat[ii,]-speedlm.fit(full_mat[ii,],cbind(1,file_number))$coefficients[2]*file_number
     # full_mat[ii,] <- detrend(full_mat[ii,])
     print(c('detrending',ss,ii))
   }
-  
+
   ### Declare number of bases to use
   Basis_number <- 100
   Basis <- create.bspline.basis(c(0,(max_file-1)*340+150),
@@ -83,21 +94,13 @@ for (ss in 1:150) {
   ### Fit B-spline to all time series
   FD <- smooth.basisPar(file_number,t(full_mat),Basis)
   coeff_mat <- as.matrix(t(FD$fd$coefs))
-  
-  ### Set file location for where you want to save the results
-  # setwd("C:/Users/uqhngu10/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11/03-chunk")
-  setwd("~/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11/03-chunk")
-  
+
   ### Save the results in the format coeff_mat_(SLICE NUMBER).rdata
   save(coeff_mat,file=paste('coeff_mat_',ss,'.rdata',sep=''))
 }
 
 
 # TRIMMED K-MEANS CLUSTERING ------------------------
-
-### Set file location where the spline fitting results are saved
-# setwd("C:/Users/uqhngu10/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11/03-chunk")
-setwd("~/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11/03-chunk")
 
 ### Load all of the coefficients and put them into a BIG matrix
 load(paste('coeff_mat_',1,'.rdata',sep=''))
@@ -129,9 +132,6 @@ scale_mat <- scale(big_mat)
 # Remove big_mat for memory saving
 rm(big_mat)
 
-### Set a location for where BIC results should be saved
-# setwd("C:/Users/uqhngu10/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11")
-setwd("~/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11")
 
 ### Compute BIC over a range of K (here 50--100)
 BIC_val <- c()
@@ -144,7 +144,7 @@ for (kk in 2:50) {
   print(TIME_STORE)
   TIME_STORE <- TIME_STORE[1] + TIME_STORE[2]
   print(c(kk,BIC_val[kk]))
-  
+
   # Save the results
   save(TIME_STORE,file='Time_store.rdata')
   save(BIC_val,file='BIC_values.rdata')
@@ -153,7 +153,7 @@ for (kk in 2:50) {
 ### Get the optimal K and computer clustering under optimal K
 n <- 1785000
 m <- Basis_number
-neg_like <- BIC_val - log(n)*(m*(1:length(BIC_val))) 
+neg_like <- BIC_val - log(n)*(m*(1:length(BIC_val)))
 log_like <- neg_like/(2)
 ave_log_like <- log_like/n
 names_vec <- 1:length(BIC_val)
@@ -182,7 +182,7 @@ for (ss in 1:150) {
       count <- count + 1
       image_hold[ss,ii,jj] <- clustering_cluster[count]
     }
-  } 
+  }
 }
 # Plot the volume at the 75th slice
 image.plot(image_hold[75,,],col=tim.colors(comp))
@@ -212,16 +212,16 @@ MEAN_PRED <- rowMeans(PRED)
 
 ### Make a set of functions for evaluating splines and convolutions of splines
 Spline_function <- function(x,cc) {sum(eval.basis(x,Basis)*centers[cc,])}
-S1 <- function(x) Spline_function(x,1) 
-S2 <- function(x) Spline_function(x,2) 
+S1 <- function(x) Spline_function(x,1)
+S2 <- function(x) Spline_function(x,2)
 S_Prod <- function(x) S1(x)*S2(x)
 # INTEGRAL <- integrate(Vectorize(S_Prod),1,(max_file-1)*340+150)$value
 
-### Compute the Covariance of each mean function 
+### Compute the Covariance of each mean function
 COVAR <- c()
 for (cc in 1:comp) {
-  S1 <- function(x) Spline_function(x,cc) 
-  S2 <- function(x) Spline_function(x,cc) 
+  S1 <- function(x) Spline_function(x,cc)
+  S2 <- function(x) Spline_function(x,cc)
   S_Prod <- function(x) S1(x)*S2(x)
   INTEGRAL <- quadv(S_Prod,1,(max_file-1)*340+150)$Q
   COVAR[cc] <- INTEGRAL
@@ -231,8 +231,8 @@ for (cc in 1:comp) {
 CORR <- matrix(NA,comp,comp)
 for (c1 in 1:comp) {
   for (c2 in c1:comp) {
-    S1 <- function(x) Spline_function(x,c1) 
-    S2 <- function(x) Spline_function(x,c2) 
+    S1 <- function(x) Spline_function(x,c1)
+    S2 <- function(x) Spline_function(x,c2)
     S_Prod <- function(x) S1(x)*S2(x)
     QUAD <- quadv(S_Prod,1,(max_file-1)*340+150)
     INTEGRAL <- QUAD$Q
@@ -270,13 +270,13 @@ image.plot(1:170,1:70,mean_image[90,,],col=grey.colors(100,0,1))
 
 # Graphing --------------------------------------------
 # Make New directory and set to new directory for graphs
-dir.create('Graphs_and_results_100_2')
-setwd('./Graphs_and_results_100_2')
+#dir.create('Graphs_and_results')
+#setwd('./Graphs_and_results')
 
 ### First set of graphs
 # Graph clustering on every 5th slice
 for (slice in seq(5,150,by=5)) {
-  pdf(paste('Clustering_Slice_',slice,'.pdf',sep=''),paper='a4r')
+  pdf(paste('indir/Clustering_Slice_',slice,'.pdf',sep=''),paper='a4r')
   # pdf(paste('Clustering_Slice_',slice,'.pdf',sep=''),paper='a4r')
   ### Plot Clustering Image
   image_hold <- array(NA,c(150,170,70))
@@ -287,9 +287,9 @@ for (slice in seq(5,150,by=5)) {
         count <- count + 1
         image_hold[ss,ii,jj] <- clustering_cluster[count]
       }
-    } 
+    }
   }
-  
+
   image.plot(image_hold[slice,,],col=tim.colors(comp))
   dev.off()
 }
@@ -312,7 +312,7 @@ for (slice in seq(5,150,by=5)) {
   }
   image.plot(1:170,1:70,mean_image[slice,,],col=grey.colors(100,0,1))
   dev.off()
-  
+
 }
 
 # Graph the location of clusters on slice 75
@@ -329,7 +329,7 @@ for (cc in 1:comp) {
           points(ii,jj,pch=15,cex=1,col='green')
         }
       }
-    }  
+    }
   }
   dev.off()
 }
@@ -348,7 +348,7 @@ for (cc in 1:comp) {
           points(ii,jj,pch=15,cex=1,col='green')
         }
       }
-    }  
+    }
   }
   dev.off()
 }
@@ -367,7 +367,7 @@ for (cc in 1:comp) {
           points(ii,jj,pch=15,cex=1,col='green')
         }
       }
-    }  
+    }
   }
   dev.off()
 }
@@ -439,9 +439,9 @@ for (slice in seq(5,150,by=5)) {
         count <- count + 1
         image_hold[ss,ii,jj] <- CUT[clustering_cluster[count]]
       }
-    } 
+    }
   }
-  
+
   image.plot(image_hold[slice,,],col=tim.colors(max(CUT)))
   dev.off()
 }
