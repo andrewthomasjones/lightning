@@ -1,5 +1,3 @@
-#! /usr/bin/Rscript
-
 ### Load necessary libraries (all CRAN libraries can be acquired using install.packages)
 library(compiler)
 library(AnalyzeFMRI)
@@ -13,7 +11,8 @@ library(speedglm)
 library(pracma)
 library(lattice)
 library(tclust)
-library(dynamicTreeCut)
+library(NbClust)
+library(capushe)
 
 ### Enable Just In Time Compiling, for ????MAYBE???? more speed.
 enableJIT(3)
@@ -23,7 +22,9 @@ enableJIT(3)
 ### Fit Splines to the time series in each of the slice files (ss loops over slices)
 for (ss in 1:150) {
   ### Set where the slices are
-  setwd("~/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11/03-chunk/NII")  
+  # setwd("C:/Users/uqhngu10/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11/03-chunk/NII") 
+  setwd("~/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11/03-chunk/NII")
+  
   ### Declare what files to load in
   ### Remove time points that do not look stationary
   file_list <- list.files()
@@ -74,7 +75,7 @@ for (ss in 1:150) {
   }
   
   ### Declare number of bases to use
-  Basis_number <- 200
+  Basis_number <- 100
   Basis <- create.bspline.basis(c(0,(max_file-1)*340+150),
                                 nbasis=Basis_number)
   BS <- eval.basis(file_number,Basis)
@@ -84,7 +85,8 @@ for (ss in 1:150) {
   coeff_mat <- as.matrix(t(FD$fd$coefs))
   
   ### Set file location for where you want to save the results
-  setwd("~/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11/03-chunk")  
+  # setwd("C:/Users/uqhngu10/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11/03-chunk")
+  setwd("~/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11/03-chunk")
   
   ### Save the results in the format coeff_mat_(SLICE NUMBER).rdata
   save(coeff_mat,file=paste('coeff_mat_',ss,'.rdata',sep=''))
@@ -94,7 +96,8 @@ for (ss in 1:150) {
 # TRIMMED K-MEANS CLUSTERING ------------------------
 
 ### Set file location where the spline fitting results are saved
-setwd("~/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11/03-chunk")  
+# setwd("C:/Users/uqhngu10/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11/03-chunk")
+setwd("~/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11/03-chunk")
 
 ### Load all of the coefficients and put them into a BIG matrix
 load(paste('coeff_mat_',1,'.rdata',sep=''))
@@ -127,26 +130,40 @@ scale_mat <- scale(big_mat)
 rm(big_mat)
 
 ### Set a location for where BIC results should be saved
-setwd("~/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11")  
+# setwd("C:/Users/uqhngu10/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11")
+setwd("~/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11")
 
 ### Compute BIC over a range of K (here 50--100)
 BIC_val <- c()
-for (kk in 50:100) {
+TIME_STORE <- c()
+for (kk in 2:50) {
   # Conduct timing while computing BIC values
   TIME <- proc.time()
-  BIC_val[kk] <- tmeansBIC(tkmeans(x=scale_mat,k=kk,alpha=.9,nstart=3,iter.max=10),scale_mat)
-  print(proc.time() - TIME)
+  BIC_val[kk] <- tmeansBIC(tkmeans(x=scale_mat,k=kk,alpha=.9,nstart=1,iter.max=20),scale_mat)
+  TIME_STORE <- proc.time() - TIME
+  print(TIME_STORE)
+  TIME_STORE <- TIME_STORE[1] + TIME_STORE[2]
   print(c(kk,BIC_val[kk]))
   
   # Save the results
+  save(TIME_STORE,file='Time_store.rdata')
   save(BIC_val,file='BIC_values.rdata')
 }
 
 ### Get the optimal K and computer clustering under optimal K
-comp <- which.min(BIC_val)
+n <- 1785000
+m <- Basis_number
+neg_like <- BIC_val - log(n)*(m*(1:length(BIC_val))) 
+log_like <- neg_like/(2)
+ave_log_like <- log_like/n
+names_vec <- 1:length(BIC_val)
+complexity_h <- shape_h <- (m*(1:length(BIC_val)))
+SHDATA <- cbind(names_vec,shape_h,complexity_h,ave_log_like)
+DD <- DDSE(SHDATA)
+comp <- as.numeric(attributes(DD)$model)
 
 ### Cluster using the optimal value for K
-clustering <- tkmeans(x=scale_mat,k=comp,alpha=.9,nstart=5,iter.max=10)
+clustering <- tkmeans(x=scale_mat,k=comp,alpha=.9,nstart=10,iter.max=20)
 
 ### Function for allocating observations to cluster from a tkmeans clustering
 tmeansClust <- function(fit,data) {
@@ -175,7 +192,7 @@ image.plot(image_hold[75,,],col=tim.colors(comp))
 file_number <- file_number.old
 max_file <- max(file_number)
 file_number <- (file_number-1)*340 + ss
-Basis_number <- 200
+Basis_number <- Basis_number
 Basis <- create.bspline.basis(c(0,(max_file-1)*340+150),
                               nbasis=Basis_number)
 BS <- eval.basis(file_number,Basis)
@@ -217,8 +234,17 @@ for (c1 in 1:comp) {
     S1 <- function(x) Spline_function(x,c1) 
     S2 <- function(x) Spline_function(x,c2) 
     S_Prod <- function(x) S1(x)*S2(x)
-    INTEGRAL <- quadv(S_Prod,1,(max_file-1)*340+150)$Q
+    QUAD <- quadv(S_Prod,1,(max_file-1)*340+150)
+    INTEGRAL <- QUAD$Q
+    INT_OLD <- INTEGRAL
+    PREC <- QUAD$estim.prec
     CORR[c1,c2] <- INTEGRAL/sqrt(COVAR[c1]*COVAR[c2])
+    while( xor(CORR[c1,c2] > 1, CORR[c1,c2] < -1) ) {
+      if (CORR[c1,c2] > 1) {INTEGRAL <- INTEGRAL - PREC*INT_OLD}
+      if (CORR[c1,c2] < -1) {INTEGRAL <- INTEGRAL + PREC*INT_OLD}
+      CORR[c1,c2] <- INTEGRAL/sqrt(COVAR[c1]*COVAR[c2])
+    }
+    image.plot(CORR)
   }
 }
 # Plot Correlation matrix
@@ -244,8 +270,8 @@ image.plot(1:170,1:70,mean_image[90,,],col=grey.colors(100,0,1))
 
 # Graphing --------------------------------------------
 # Make New directory and set to new directory for graphs
-dir.create('Graphs_and_results')
-setwd('./Graphs_and_results')
+dir.create('Graphs_and_results_100_2')
+setwd('./Graphs_and_results_100_2')
 
 ### First set of graphs
 # Graph clustering on every 5th slice
@@ -363,15 +389,15 @@ dev.off()
 # Hierachical Clustering ------------------------------
 # Make a distance metric
 DIST <- as.dist(1-t(CORR))
-# Conduct hierachical clustering
-HCLUST <- hclust(DIST)
+HCLUST <- hclust(DIST,method='average')
 
-# Make tree cut using dynamicTreeCut
-CUT <- cutreeDynamicTree(HCLUST,minModuleSize=1)
+# Make tree cut using Dunn Index
+NB <- NbClust(diss=DIST,distance=NULL,method='average',index='silhouette',max.nc=ceiling(comp-2))
+CUT <- NB$Best.partition
 
 # Plot dendrogram
 pdf('Dendrogram_clusters.pdf',width=30,height=10)
-plot(HCLUST)
+plot(HCLUST,xlab='')
 rect.hclust(HCLUST,max(CUT),border=rainbow(max(CUT)))
 dev.off()
 
@@ -395,6 +421,35 @@ dev.off()
 
 # Plot K means by HCLUST reference
 pdf('Cluster_by_HCLUST.pdf',paper='a4r')
-plot(CUT,col=tim.colors(86),xlim=c(0,comp+1),ylim=c(0,8),xlab='Cluster',ylab='HCLUST')
+plot(CUT,col=tim.colors(comp),xlim=c(0,comp+1),ylim=c(0,8),xlab='Cluster',ylab='HCLUST')
 grid()
 dev.off()
+
+
+# Graph clustering based on cuts on every 5th slice
+for (slice in seq(5,150,by=5)) {
+  pdf(paste('CUT_Slice_',slice,'.pdf',sep=''),paper='a4r')
+  # pdf(paste('Clustering_Slice_',slice,'.pdf',sep=''),paper='a4r')
+  ### Plot Clustering Image
+  image_hold <- array(NA,c(150,170,70))
+  count <- 0
+  for (ss in 1:150) {
+    for (ii in 1:170) {
+      for (jj in 1:70) {
+        count <- count + 1
+        image_hold[ss,ii,jj] <- CUT[clustering_cluster[count]]
+      }
+    } 
+  }
+  
+  image.plot(image_hold[slice,,],col=tim.colors(max(CUT)))
+  dev.off()
+}
+
+
+save(clustering_cluster,file='clustering.rdata')
+save(mean_image,file='mean_image.rdata')
+save(PRED,file='predicted_means.rdata')
+save(CORR,file='correlation_matrix.rdata')
+save(BIC_val,file='BIC_values.rdata')
+save(TIME_STORE,file='Time_Store.rdata')
