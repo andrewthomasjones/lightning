@@ -48,8 +48,8 @@ $logdir = "$opt{'workdir'}/log";
    "$odir/even-init.xfm");
 
 # create MIP
-if(&mcomplete("$odir/02-mipt.res-sq.mnc")){
-   printf " + $odir/02-mipt.res-sq.mnc Exists, skipping\n";
+if(&mcomplete("$bdir/02-align.mip.mnc")){
+   printf " + $bdir/02-align.mip.mnc Exists, skipping\n";
    }
 else{
 
@@ -79,13 +79,13 @@ else{
       '-ydircos', 0, 1, 0,
       '-zdircos', 0, 0, 1,
       '-transformation', "$odir/even-init.xfm",
-      "$odir/02-mipt.mnc", "$odir/02-mipt.res-sq.mnc");
+      "$odir/02-mipt.mnc", "$bdir/02-align.mip.mnc");
    }
 
 
 # create mask
-if(&mcomplete("$bdir/mask.mnc")){
-   printf " + $bdir/mask.mnc Exists, skipping\n";
+if(&mcomplete("$bdir/02-align.mask.mnc")){
+   printf " + $bdir/02-align.mask.mnc Exists, skipping\n";
    }
 else{
    $nframes = 200;
@@ -105,19 +105,24 @@ else{
 
    # get threshold
    &do_cmd('mincnorm', '-clobber',
-      "$odir/02-avgt.mnc", "$odir/02-avgt.norm.mnc");
-   chomp($thresh = `mincstats -quiet -biModalT $odir/02-avgt.norm.mnc`);
-   print "Got threshold of $thresh\n";
-   if($thresh > 40){
-      $thresh = 12;
-      }
+      "$odir/02-avgt.mnc", "$bdir/02-align.avg.mnc");
+
+   #chomp($thresh = `mincstats -quiet -biModalT $odir/02-avgt.norm.mnc`);
+   #print "Got threshold of $thresh\n";
+   #if($thresh > 40){
+   #   $thresh = 12;
+   #}
+   die "No threshold file ($bdir/00-orig.thresh.txt) found\n" .
+      "   Create using -- register $bdir/02-align.avg.mnc\n"
+      if !-e "$bdir/00-orig.thresh.txt";
+   chomp($thresh = `cat $bdir/00-orig.thresh.txt`);
    print "Using treshold of $thresh\n";
 
    # reshape to MIP data
    &do_cmd('mincresample', '-clobber',
-         '-like', "$odir/02-mipt.res-sq.mnc",
+         '-like', "$bdir/02-align.mip.mnc",
          '-transformation', "$odir/even-init.xfm",
-         "$odir/02-avgt.norm.mnc", "$odir/02-avgt.res-sq.mnc");
+         "$bdir/02-align.avg.mnc", "$odir/02-avgt.res-sq.mnc");
 
    # pad, binarise, erode, group, dilate, blur, un-pad
    &do_cmd('volpad', '-clobber',
@@ -131,10 +136,10 @@ else{
       "$odir/02-avgt.res-sq.morph.mnc", "$odir/02-avgt-b");
    &do_cmd('volpad', '-clobber',
       '-distance', -10,
-      "$odir/02-avgt-b_blur.mnc", "$bdir/mask.mnc");
+      "$odir/02-avgt-b_blur.mnc", "$bdir/02-align.mask.mnc");
 
    # check image
-   &do_cmd('mph', "$bdir/mask.mnc");
+   &do_cmd('mph', "$bdir/02-align.mask.mnc");
    }
 
 
@@ -145,7 +150,7 @@ if(&mcomplete("$bdir/align.xfm")){
 else{
    # mask data
    &do_cmd('mincmath', '-clobber',
-      '-mult', "$odir/02-mipt.res-sq.mnc", "$bdir/mask.mnc",
+      '-mult', "$bdir/02-align.mip.mnc", "$bdir/02-align.mask.mnc",
       "$odir/02-reg-source.mnc");
 
    # initial rotation
@@ -162,24 +167,24 @@ else{
    # align data
    &do_cmd('volalign', '-clobber',
       '-y',
-      "$odir/02-reg-source-rot.mnc", "$odir/align.xfm", "$bdir/align.mnc");
+      "$odir/02-reg-source-rot.mnc", "$odir/align.xfm", "$bdir/02-align.align.mnc");
 
    # add initial rotation back on
    &do_cmd('xfmconcat', '-clobber',
       "$odir/rot--45x.xfm", "$odir/align.xfm", "$bdir/align.xfm");
 
    # check image
-   &do_cmd('mph', "$bdir/align.mnc");
+   &do_cmd('mph', "$bdir/02-align.align.mnc");
    }
 
 
-# align to model
+# register to model
 $lin_xfm = "$bdir/model.lin.xfm";
 if(&mcomplete($lin_xfm)){
    print " + $lin_xfm Exists, skipping\n";
    }
 else{
-   # align data
+   # register data
    &do_cmd('minctracc', '-clobber', '-debug',
       '-lsq12',
       '-transformation', "$bdir/align.xfm",
@@ -191,11 +196,13 @@ else{
       '-like', $model,
       "$odir/02-reg-source.mnc", "$bdir/model.lin.mnc");
 
+   &do_cmd('mph', "$bdir/model.lin.mnc");
+
    # resample mask
    &do_cmd('mincresample', '-clobber',
       '-transformation', "$bdir/model.lin.xfm",
       '-like', $model,
-      "$bdir/mask.mnc", "$bdir/model-mask.lin.mnc");
+      "$bdir/02-align.mask.mnc", "$bdir/model-mask.lin.mnc");
 
    # check image
    &do_cmd('mph', "$bdir/model-mask.lin.mnc");
@@ -229,17 +236,27 @@ for($t=0; $t<$nframes; $t+=2){
    $ofname0 = sprintf("$odir/R-out-%06d.mnc", $t);
    $ofname1 = sprintf("$odir/R-out-%06d.mnc", ($t+1));
 
-   &do_cmd_batch("RES-$$-$t", "none",
-      'mincresample', '-clobber',
-      '-like', $model,
-      '-transformation', "$odir/even.xfm",
-      $ifname0, $ofname0);
+   if(&mcomplete($ofname0)){
+      print " + $ofname0 Exists, skipping\n";
+      }
+   else{
+      &do_cmd_batch("RES-$$-$t", "none",
+         'mincresample', '-clobber',
+         '-like', $model,
+         '-transformation', "$odir/even.xfm",
+         $ifname0, $ofname0);
+      }
 
-   &do_cmd_batch("RES-$$-" . ($t+1), "none",
-      'mincresample', '-clobber',
-      '-like', $model,
-      '-transformation', "$odir/odd.xfm",
-      $ifname1, $ofname1);
+   if(&mcomplete($ofname1)){
+      print " + $ofname1 Exists, skipping\n";
+      }
+   else{
+      &do_cmd_batch("RES-$$-" . ($t+1), "none",
+         'mincresample', '-clobber',
+         '-like', $model,
+         '-transformation', "$odir/odd.xfm",
+         $ifname1, $ofname1);
+      }
    }
 
 

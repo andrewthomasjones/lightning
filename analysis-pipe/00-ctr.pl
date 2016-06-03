@@ -9,7 +9,7 @@ use File::Basename;
    'verbose' => 1,
    'clobber' => 1,
    'fake' => 0,
-   'batch' => 1,
+   'batch' => 0,
    'workdir' => ".",
    'tmpdir' => undef,
    );
