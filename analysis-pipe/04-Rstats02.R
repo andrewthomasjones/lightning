@@ -2,12 +2,12 @@
 #
 ### Load necessary libraries (all CRAN libraries can be acquired using install.packages)
 ##
-#
-#
+# > install.packages("tclust")
+
 
 library(compiler)
 library(AnalyzeFMRI)
-library(MESS)
+library(MASS)
 library(abind)
 library(fda)
 library(fields)
@@ -16,95 +16,114 @@ library(RcppEigen)
 library(speedglm)
 library(pracma)
 library(lattice)
+library(tclust)
 
-### Images are sampled at .2 per second
-### Time offset 340*170*750 >>> 150*70*170
-
+### Enable Just In Time Compiling, for ????MAYBE???? more speed.
 enableJIT(3)
 
-### Working Directories containing NII versions of my files
-setwd("/data/home/uqajank2/data/NIF053-ZFISH-SCAPE/SCAPE-MNC2/20150628_5dpf_H2BS_CON_LR_F11/03-chunk/")
+# SPLINE FITTING --------------------------------------
 
-### Declare what files to load in
-### Remove time points that do not look stationary
-file_list <- list.files()
-file_list <- file_list[grep('.nii',file_list)]
-file_number <- as.numeric(substr(file_list,7,12))
-# file_list <- file_list[which(file_number>2000 & file_number<5000)] # F11
-file_list <- file_list[which(file_number>500 & file_number<=3300)] # F03 and F04
-file_number <- as.numeric(substr(file_list,7,12)) - 500
+scape_dir <- "/data/home/uqajank2/data/NIF053-ZFISH-SCAPE/SCAPE-MNC2/20150628_5dpf_H2BS_CON_LR_F11/03-chunk/"
 
-### Declare number of time slices left and initialize list
-N <- length(file_number)
-full_array <- list()
-
-print(paste("Found ", N, " time slices"))
-
-### Read in 75th Z slice
-pb <- txtProgressBar(min = 0, max = N, style = 3)
-for (ii in 1:N) {
-  file_name <- substring(file_list[ii],1,12)
-  nii_name <- paste(file_name,'.nii',sep='')
-  NIFTI <- f.read.nifti.slice(nii_name,75,1)
-  full_array[[ii]] <- NIFTI
-  setTxtProgressBar(pb, ii)
-  #print(c(ii,ii/N))
-}
-
-### Combine all of the time slices
-full_array <- abind(full_array,along=3)
-
-### Store data into matrix instead of array
-print("Re-org to matrix from array")
-count <- 0
-full_mat <- matrix(NA,prod(170*70),N)
-pb <- txtProgressBar(min = 0, max = 170*70, style = 3)
-for (ii in 1:170) {
-  for (jj in 1:70) {
-    count <- count + 1
-    full_mat[count,] <- full_array[ii,jj,]
-    setTxtProgressBar(pb, count)
-    #print(count)
+### Fit Splines to the time series in each of the slice files (ss loops over slices)
+for (ss in 1:150) {
+  ### Set where the slices are
+  setwd(scape_dir)
+  #setwd("C:/Users/uqhngu10/Dropbox/Collaborations/Jeremy Ullmann/Zebrafish_260216/for-hien/20150628_5dpf_H2BS_CON_LR_F11/03-chunk/NII")
+  
+  ### Declare what files to load in
+  ### Remove time points that do not look stationary
+  file_list <- list.files()
+  file_list <- file_list[grep('.nii',file_list)]
+  file_number <- as.numeric(substr(file_list,7,12))
+  
+  ### These lines are kind of data dependent. I've determined what works for F11, F03, and F04.
+  # file_list <- file_list[which(file_number>2000 & file_number<5000)] # F11
+  file_list <- file_list[which(file_number>500 & file_number<=3300)] # F03 and F04
+  file_number <- as.numeric(substr(file_list,7,12)) - 500 # - 500 is F03 and F04 dependent, for F11 it would be - 2000.
+  
+  max_file <- max(file_number)
+  file_number <- (file_number-1)*340 + ss
+  
+  ### Declare number of time slices left and initialize list
+  N <- length(file_number)
+  full_array <- list()
+  
+  ### Read in 75th Z slice
+  for (ii in 1:N) {
+    file_name <- substring(file_list[ii],1,12)
+    nii_name <- paste(file_name,'.nii',sep='')
+    NIFTI <- f.read.nifti.slice(nii_name,ss,1)
+    full_array[[ii]] <- NIFTI
+    print(c('reading',ss,ii,ii/N))
   }
+  
+  ### Combine all of the time slices
+  full_array <- abind(full_array,along=3)
+  
+  ### Store data into matrix instead of array
+  count <- 0
+  full_mat <- matrix(NA,prod(170*70),N)
+  for (ii in 1:170) {
+    for (jj in 1:70) {
+      count <- count + 1
+      full_mat[count,] <- full_array[ii,jj,]
+      print(c('storing',ss,count))
+    }
+  }
+  
+  ### Detrend data
+  for (ii in 1:(170*70)) {
+    full_mat[ii,] <- full_mat[ii,]-speedlm.fit(full_mat[ii,],cbind(1,file_number))$coefficients[2]*file_number
+    # full_mat[ii,] <- detrend(full_mat[ii,])
+    print(c('detrending',ss,ii))
+  }
+  
+  ### Declare number of bases to use
+  Basis_number <- 200
+  Basis <- create.bspline.basis(c(0,(max_file-1)*340+150),
+                                nbasis=Basis_number)
+  BS <- eval.basis(file_number,Basis)
+  
+  ### Fit B-spline to all time series
+  coeff_mat <- matrix(NA,170*70,Basis_number)
+  count <- 0
+  for (ii in 1:(170*70)) {
+    LM <- fastLmPure(BS,full_mat[ii,])
+    # LM <- speedlm.fit(full_mat[ii,],BS)
+    coeff_mat[ii,] <- LM$coefficients
+    print(c('filtering',ss,ii))
+  }
+  
+  ### Set file location for where you want to save the results
+  setwd(scape_dir)
+  
+  ### Save the results in the format coeff_mat_(SLICE NUMBER).rdata
+  save(coeff_mat,file=paste('coeff_mat_',ss,'.rdata',sep=''))
 }
 
-### Detrend data
-print("Detrend data")
-pb <- txtProgressBar(min = 0, max = 170*70, style = 3)
-for (ii in 1:(170*70)) {
-  full_mat[ii,] <- full_mat[ii,]-speedlm.fit(full_mat[ii,],cbind(1,file_number))$coefficients[2]*file_number
-  # full_mat[ii,] <- detrend(full_mat[ii,])
-  setTxtProgressBar(pb, ii)
-  #print(ii)
-}
 
-### Declare number of bases to use
-Basis_number <- 200
+# TRIMMED K-MEANS CLUSTERING ------------------------
 
-### Generate Fourier Basis/B-Spline
-Basis <- create.bspline.basis(c(0,max(file_number)), nbasis=Basis_number)
-BS <- eval.basis(file_number,Basis)
+### Set file location where the spline fitting results are saved
+setwd(scape_dir)
 
-### Fit B-spline to all time series
-print("Bspline fit data")
-coeff_mat <- matrix(NA,170*70,Basis_number)
-count <- 0
-pb <- txtProgressBar(min = 0, max = 170*70, style = 3)
-for (ii in 1:(170*70)) {
-  LM <- fastLmPure(BS,full_mat[ii,])
-  # LM <- speedlm.fit(full_mat[ii,],BS)
-  coeff_mat[ii,] <- LM$coefficients
-  setTxtProgressBar(pb, ii)
-  #print(ii)
+### Load all of the coefficients and put them into a BIG matrix
+load(paste('coeff_mat_',1,'.rdata',sep=''))
+big_mat <- coeff_mat
+for (ss in 2:150) {
+  load(paste('coeff_mat_',ss,'.rdata',sep=''))
+  big_mat <- rbind(big_mat,coeff_mat)
+  print(ss)
 }
 
 ### Function for computing BIC of K-means
-kmeansBIC <- function(fit,data) {
-  m = ncol(fit$centers)
+tmeansBIC <- function(fit,data) {
+  m = nrow(fit$centers)
   n = length(fit$cluster)
-  k = nrow(fit$centers)
-  PI = table(fit$cluster)/n
-  log_densities = -as.matrix(pdist2(data,fit$center))^2/2 - (m/2)*log(2*pi) - log(m)/2
+  k = ncol(fit$centers)
+  PI = rep(1/k,k)
+  log_densities = -as.matrix(pdist2(data,t(fit$center)))^2/2 - (m/2)*log(2*pi) - log(m)/2
   inner = sweep(log_densities,2,log(PI),'+')
   max_val = apply(inner,1,max)
   inner_minus = sweep(inner,1,max_val,'-')
@@ -115,87 +134,118 @@ kmeansBIC <- function(fit,data) {
 }
 
 ### Scale the coeffient matrix for K-means
-scale_mat <- scale(coeff_mat)
+scale_mat <- scale(big_mat)
+# Remove big_mat for memory saving
+rm(big_mat)
 
-### Compute BIC over a range of K
+### Set a location for where BIC results should be saved
+setwd(scape_dir)
+
+### Compute BIC over a range of K (here 2--80)
 BIC_val <- c()
-for (kk in 10:20) {
-  BIC_val[kk] <- kmeansBIC(kmeans(scale_mat,kk,100,10),scale_mat)
+for (kk in 2:80) {
+  # Conduct timing while computing BIC values
+  TIME <- proc.time()
+  BIC_val[kk] <- tmeansBIC(tkmeans(x=scale_mat,k=kk,alpha=.9,nstart=3,iter.max=10),scale_mat)
+  print(proc.time() - TIME)
   print(c(kk,BIC_val[kk]))
+  
+  # Save the results
+  save(BIC_val,file='BIC_values.rdata')
 }
 
 ### Get the optimal K and computer clustering under optimal K
-comp <- which.min(BIC_val)
-clustering <- kmeans(scale_mat,comp,100,20)
+comp <- which.min(BIC_val,na.rm=T)
+### Cluster using the optimal value for K
+clustering <- tkmeans(x=scale_mat,k=comp,alpha=.9,nstart=5,iter.max=10)
 
-### Plot Clustering Image
-image_hold <- matrix(NA,170,70)
-count <- 0
-for (ii in 1:170) {
-  for (jj in 1:70) {
-    count <- count + 1
-    image_hold[ii,jj] <- clustering$cluster[count]
-  }
-}
-image.plot(image_hold,col=tim.colors(comp))
-
-### Plot first 3 principal components
-princip <- princomp(scale_mat,cor=T)
-plot(as.data.frame(princip$scores[,c(1:3)]),col=tim.colors(comp)[clustering$cluster])
-
-### Plot the Basis function coefficients for each cluster
-plot(c(0,Basis_number),c(min(clustering$centers),max(clustering$centers)),type='n')
-for (ii in 1:comp) {
-  lines(1:Basis_number,clustering$centers[ii,],col=tim.colors(comp)[ii])
+### Function for allocating observations to cluster from a tkmeans clustering
+tmeansClust <- function(fit,data) {
+  apply(as.matrix(pdist2(data,t(fit$center))),1,which.min)
 }
 
-### Plot a specific cluster overlayed on a mean image
-which_clust <- 6
-mean_image <- matrix(NA,170,70)
+### Get a clustering using the tkmeans clustering form variable "clustering"
+clustering_cluster <- tmeansClust(clustering,scale_mat)
+
+### Produce Volume with cluster labels coordinates are (z,x,y)
+image_hold <- array(NA,c(150,170,70))
 count <- 0
-for (ii in 1:170) {
-  for (jj in 1:70) {
-    count <- count + 1
-    mean_image[ii,jj] <- mean(full_mat[count,])
-  }
-}
-image.plot(1:170,1:70,mean_image,col=heat.colors(100))
-count <- 0
-for (ii in 1:170) {
-  for (jj in 1:70) {
-    count <- count + 1
-    if (clustering$cluster[count]==which_clust) {
-      points(ii,jj,pch=15,cex=1,col='black')
+for (ss in 1:150) {
+  for (ii in 1:170) {
+    for (jj in 1:70) {
+      count <- count + 1
+      image_hold[ss,ii,jj] <- clustering_cluster[count]
     }
-  }
+  } 
 }
+# Plot the volume at the 75th slice
+image.plot(image_hold[75,,],col=tim.colors(comp))
 
 ### Obtain the cluster mean time series
-centers <- clustering$centers
+# Reload Graphing Parameters (These values are specific to F03 and F04)
+max_file <- 3300
+file_number <- 501:3300-500
+Basis_number <- 200
+Basis <- create.bspline.basis(c(0,(max_file-1)*340+150),
+                              nbasis=Basis_number)
+BS <- eval.basis(file_number,Basis)
+# Compute the mean time series
+centers <- t(clustering$centers)
 centers <- sweep(centers,2,attributes(scale_mat)$'scaled:scale','*')
 centers <- sweep(centers,2,attributes(scale_mat)$'scaled:center','+')
-pred_range <- eval.basis(1:max(file_number),Basis)
+pred_range <- eval.basis(seq(1,((max_file-1)*340+150),1000),Basis)
+# Each row is a mean time series over the pred_range values
 PRED <- matrix(NA,dim(centers)[1],dim(pred_range)[1])
 for (ii in 1:dim(centers)[1]) {
   PRED[ii,] <- apply(pred_range,1,function(x) {sum(x*centers[ii,])})
 }
+# The time average values of each series
+MEAN_PRED <- rowMeans(PRED)
 
 
-### Plot any time series with its optimal cluster mean
-number <- 10
-clustering$cluster[number]
-plot(full_mat[number,]~file_number,type='l')
-lines(PRED[clustering$cluster[number],],col='red')
+### Make a set of functions for evaluating splines and convolutions of splines
+Spline_function <- function(x,cc) {sum(eval.basis(x,Basis)*centers[cc,])}
+S1 <- function(x) Spline_function(x,1) 
+S2 <- function(x) Spline_function(x,2) 
+S_Prod <- function(x) S1(x)*S2(x)
+# INTEGRAL <- integrate(Vectorize(S_Prod),1,(max_file-1)*340+150)$value
 
-### Plot dissimilarity matrix, based on correlation
-dissimilarity <- 1-cor(as.data.frame(t(PRED)),method='spearman')
-distance <- as.dist(dissimilarity)
-image.plot(1:comp,1:comp,cor(as.data.frame(t(PRED))[,hclust(distance)$order]))
+### Compute the Covariance of each mean function 
+COVAR <- c()
+for (cc in 1:comp) {
+  S1 <- function(x) Spline_function(x,cc) 
+  S2 <- function(x) Spline_function(x,cc) 
+  S_Prod <- function(x) S1(x)*S2(x)
+  INTEGRAL <- quadv(S_Prod,1,(max_file-1)*340+150)$Q
+  COVAR[cc] <- INTEGRAL
+}
 
-### Plot joint trajectory of any two mean curves
-xyplot(PRED[1,]~PRED[14,],col=tim.colors(max(file_number)),type='b',cex=2,pch=19)
+### Compute the Correlation between pairs of mean functions
+CORR <- matrix(NA,comp,comp)
+for (c1 in 1:comp) {
+  for (c2 in c1:comp) {
+    S1 <- function(x) Spline_function(x,c1) 
+    S2 <- function(x) Spline_function(x,c2) 
+    S_Prod <- function(x) S1(x)*S2(x)
+    INTEGRAL <- quadv(S_Prod,1,(max_file-1)*340+150)$Q
+    CORR[c1,c2] <- INTEGRAL/sqrt(COVAR[c1]*COVAR[c2])
+  }
+}
+# Plot Correlation matrix
+image.plot(CORR)
 
-### Plot period space spectrogram of any mean curve
-SS <- spectrum(PRED[10,],c(11,11))
-plot(log(0.2/SS$freq,2),SS$spec,type='l')
-0.2/SS$freq[which.max(SS$spec)]
+### Create a Mean value image (using the predicted mean values from MEAN_PRED)
+which_clust <- 6
+mean_image <- array(NA,c(150,170,70))
+count <- 0
+for (ss in 1:150)
+{
+  for (ii in 1:170) {
+    for (jj in 1:70) {
+      count <- count + 1
+      mean_image[ss,ii,jj] <- MEAN_PRED[clustering_cluster[count]]
+    }
+  }
+}
+# Plot the mean image at slice 90
+image.plot(1:170,1:70,mean_image[90,,],col=grey.colors(100,0,1))
