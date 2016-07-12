@@ -19,7 +19,7 @@ library(RcppEigen)
 library(RcppArmadillo)
 #needs to be c++ 11 because I used the tuple class
 Sys.setenv("PKG_CXXFLAGS"="-std=c++11")
-sourceCpp('./bin/tkmeans.cpp') #make sure in same folder
+sourceCpp('./tkmeans.cpp') #make sure in same folder
 
 ### Enable Just In Time Compiling, for ????MAYBE???? more speed.
 enableJIT(3)
