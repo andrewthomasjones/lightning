@@ -19,7 +19,8 @@ library(RcppEigen)
 library(RcppArmadillo)
 #needs to be c++ 11 because I used the tuple class
 Sys.setenv("PKG_CXXFLAGS"="-std=c++11")
-sourceCpp('./tkmeans.cpp') #make sure in same folder
+if(file.exists('./bin/tkmeans.cpp')){sourceCpp('./bin/tkmeans.cpp')} #for testing
+if(file.exists('./tkmeans.cpp')){sourceCpp('./tkmeans.cpp')} #actual file structure
 
 ### Enable Just In Time Compiling, for ????MAYBE???? more speed.
 enableJIT(3)
@@ -96,7 +97,7 @@ for (ss in 1:Z_SIZE) {
 
 #scales inplace, returns means and sd for later use
 mean_sd_from_unscaled<-scale_lowmem(big_mat)
-save(mean_sd_from_unscaled, file = paste0(indir,"Scalingparams.rdata"))
+save(mean_sd_from_unscaled, file = paste0(indir,"/scalingparams.rdata"))
 print("Matrix successfully loaded and rescaled.")
 
 ### Declare what files to load in
@@ -114,7 +115,7 @@ file_number <- (file_number-1)*Z_SIZE + ss
 
 
 #probably put a better check here
-if(!file.exists(paste0(indir,'/clustering.rdata'))){
+if(!file.exists(paste0(indir,'/clustering.rdata')) | !file.exists(paste0(indir,'/centers.rdata')) ){
   ### Set working directory for computation
   # BAD post-doc, do not do this. (this made things fail later)
   # see changes to list.files below also
@@ -324,11 +325,10 @@ if(!file.exists(paste0(indir,'/clustering.rdata'))){
 }
 
 #reload params
-load(file = paste0(indir,"Scalingparams.rdata"))
+load(file = paste0(indir,"/scalingparams.rdata"))
 load(file=paste0(indir,'/centers.rdata'))
 load(file=paste(indir,'/clustering.rdata',sep=''))
 load(file=paste(indir,'/image_hold.rdata',sep=''))
-load(file=paste0(indir,"Scalingparams.rdata"))
 load(file=paste(indir,'/predicted_means.rdata',sep=''))
 load(file=paste(indir,'/correlation_matrix.rdata',sep=''))
 load(file=paste(indir,'/mean_image.rdata',sep=''))
@@ -336,7 +336,7 @@ load(file=paste(indir,'/mean_image.rdata',sep=''))
 comp<-dim(clustering)[1]
 
 clustering_cluster <- tmeansClust_lowmem(big_mat,clustering)
-save(clustering_cluster, file=paste0(indir,"cluster_allocations.rdata"))
+save(clustering_cluster, file=paste0(indir,"/cluster_allocations.rdata"))
 
 #print(dim(clustering_cluster))
 ### Produce Volume with cluster labels coordinates are (z,x,y)
@@ -382,8 +382,8 @@ centers <- clustering
 
 #reload scaling if need be
 if(!exists("mean_sd_from_unscaled")){
-  if(file.exists(paste0(indir,"Scalingparams.rdata"))){
-    load(paste0(indir,"Scalingparams.rdata"))
+  if(file.exists(paste0(indir,"/scalingparams.rdata"))){
+    load(paste0(indir,"/scalingparams.rdata"))
   }
 }
 
