@@ -35,7 +35,6 @@ Moore_nbh <- function(input,dist,x_co,y_co,z_co) {
   
   output <- input[max(1,x_co-dist):min(x_size,x_co+dist),max(1,y_co-dist):min(y_size,y_co+dist), max(1,z_co-dist):min(z_size,z_co+dist)]
   output <- c(output)
-  output<-output[-(length(output)%/%2 +1)]
   return(output)
 }
 
@@ -59,7 +58,7 @@ vN_nbh <- function(input,dist,x_co,y_co, z_co) {
     for (y in list_y) {
       for (z in list_z) {
         centre_dist = abs(x-x_co) + abs(y-y_co) + abs(z-z_co)
-        if (centre_dist <= dist & centre_dist!=0) {
+        if (centre_dist <= dist) {
           output[count] <- input[x,y,z]
           count <- count + 1
         }
@@ -74,7 +73,7 @@ vN_nbh <- function(input,dist,x_co,y_co, z_co) {
 # put into the function, the average count from each of the
 # 4 classes, within the Moore neighborhood of distance 1
 # around each coordinate (x,y).
-eta_fun <- function(input,dist) {
+eta_fun <- function(input,dist, weighting) {
   count <- 1
   classes <- max(input,na.rm=TRUE)
   
@@ -91,7 +90,7 @@ eta_fun <- function(input,dist) {
       for(z in 1:z_size) {
         
         for(i in 1:classes){
-            output[count,i] <- mean(Moore_nbh(input,dist,x,y, z)==i,na.rm=T) 
+            output[count,i] <- weighting[i]*mean(Moore_nbh(input,dist,x,y, z)==i,na.rm=T) 
         }
         
         count <- count + 1
