@@ -125,7 +125,7 @@ testout1<-image_hold
 testout1[is.na(testout1)]<-0
 testout2<-array(smooth_im_1, dim = dim(testout1))
 
-
+#also stuff is getting jumbled here
 
 f.write.nifti(testout1 ,file='./testorig.nii', nii=TRUE)
 f.write.nifti(testout2 ,file='./testorig2.nii', nii=TRUE)
