@@ -15,11 +15,47 @@ library(capushe)
 
 ### Parse CMD Line Arguments
 args <- commandArgs(trailingOnly = TRUE)
+
 indir <- args[1]
+mask_fn <- args[2]
 
+print(c('1indir', indir))
 
+X_SIZE <- 130
+Y_SIZE <- 640
+Z_SIZE <- 300
 
+load(file = paste0(indir,"Scalingparams.rdata"))
+load(file=paste0(indir,'/centers.rdata'))
+load(file=paste(indir,'/clustering.rdata',sep=''))
 load(file=paste(indir,'/image_hold.rdata',sep=''))
+load(file=paste0(indir,"Scalingparams.rdata"))
+load(file=paste(indir,'/predicted_means.rdata',sep=''))
+load(file=paste(indir,'/correlation_matrix.rdata',sep=''))
+load(file=paste(indir,'/mean_image.rdata',sep=''))
+
+
+### Load Mask File
+print(paste("Loading mask ", mask_fn, sep=""))
+MASK <- f.read.nifti.volume(mask_fn)
+MASK <- MASK[,,,1]
+### Dummy Mask
+D_Mask <- array(NA,c(Z_SIZE,Y_SIZE,X_SIZE))
+
+for (ss in 1:Z_SIZE) {
+  for (ii in 1:Y_SIZE) {
+    for (jj in 1:X_SIZE) {
+      D_Mask[ss,ii,jj] <- MASK[ii,jj,ss]>=.99995
+    }
+  }
+}
+ssDM <- sum(D_Mask)
+
+
+comp<-dim(clustering)[1]
+
+
+clustering_cluster <- tmeansClust_lowmem(big_mat,clustering)    
 
 
 # Define a function that obtains the Moore neighborhood
