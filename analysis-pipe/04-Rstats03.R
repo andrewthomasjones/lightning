@@ -143,7 +143,7 @@ image_hold<-image_hold[80:100,80:100,80:100]
 print("Doing MRF smoothing...")
 # 
 #   
- mrf_val <- eta_fun(image_hold,1, rep(1,27), Moore_nbh)
+ mrf_val <- eta_fun(image_hold,1, rep(1,27), vN_nbh)
 # # Construct an MRF from the image and neighbourhood function
 # # eta_fun using the multinomial regression function multinom.
 # 
