@@ -1,8 +1,8 @@
 ### Load necessary libraries (all CRAN libraries can be acquired using install.packages)
 library(compiler)
 library(AnalyzeFMRI)
-library(ggplot2)
-library(reshape2)
+#library(ggplot2)
+#library(reshape2)
 library(MASS)
 library(abind)
 library(fda)
@@ -18,6 +18,7 @@ library(capushe)
 library(Rcpp)
 library(RcppEigen)
 library(RcppArmadillo)
+
 #needs to be c++ 11 because I used the tuple class
 Sys.setenv("PKG_CXXFLAGS"="-std=c++11")
 if(file.exists('./bin/tkmeans.cpp')){sourceCpp('./bin/tkmeans.cpp')} #for testing
@@ -622,7 +623,7 @@ dev.off()
 # # Make a distance metric
 DIST <- as.dist(1-t(CORR))
 HCLUST <- hclust(DIST,method='average')
-pdf(paste(indir,'/Correlation_matrix.pdf',sep=''),paper='a4r')
+pdf(paste(indir,'/Cluster_dendrogram.pdf',sep=''),paper='a4r')
 plot(HCLUST)
 dev.off()
 print("04-Rstats02.R complete.")
