@@ -618,7 +618,6 @@ pdf(paste(indir,'/Correlation_matrix.pdf',sep=''),paper='a4r')
 image.plot(1:comp,1:comp,CORR)
 dev.off()
 
-
 # Hierachical Clustering ------------------------------
 # # Make a distance metric
 DIST <- as.dist(1-t(CORR))
