@@ -596,12 +596,12 @@ print("Analysis done and saved. Producing and saving plots.")
 #also graph here  with gggplot2
 
 
-# # Graph the Mean functions
-# for (cc in 1:comp) {
-#   pdf(paste(indir,'/Cluster_Mean_Function_',cc,'.pdf',sep=''),paper='a4r')
-#   plot(seq(1,((max_file-1)*Z_SIZE+Z_SIZE),1000),PRED[cc,],type='l',xlab='Time',ylab='signal',main=cc)
-#   dev.off()
-# }
+# Graph the Mean functions
+for (cc in 1:comp) {
+  pdf(paste(indir,'/Cluster_Mean_Function_',cc,'.pdf',sep=''),paper='a4r')
+  plot(seq(1,((max_file-1)*Z_SIZE+Z_SIZE),1000),PRED[cc,],type='l',xlab='Time',ylab='signal',main=cc)
+  dev.off()
+}
 
 ##R version issue here
 # pred.df<-data.frame(t(PRED))
@@ -626,7 +626,7 @@ HCLUST <- hclust(DIST,method='average')
 pdf(paste(indir,'/Cluster_dendrogram.pdf',sep=''),paper='a4r')
 plot(HCLUST)
 dev.off()
-print("04-Rstats02.R complete.")
+
 # # 
 # # # Make tree cut using Dunn Index
 # #NB <- NbClust( diss=DIST,distance=NULL,method='average',index='silhouette',max.nc=ceiling(comp-2))
@@ -652,10 +652,10 @@ print("04-Rstats02.R complete.")
 #   dev.off()
 # }
 # 
-# # Plot Frequency Histogram
-# pdf(paste(indir,'/Frequency_of_clusters.pdf',sep=''),paper='a4r')
-# plot(table(clustering_cluster),xlab='cluster',ylab='Frequency')
-# dev.off()
+# Plot Frequency Histogram
+pdf(paste(indir,'/Frequency_of_clusters.pdf',sep=''),paper='a4r')
+plot(table(clustering_cluster),xlab='cluster',ylab='Frequency')
+dev.off()
 
 # # Plot K means by HCLUST reference
 # pdf(paste(indir,'/Cluster_by_HCLUST.pdf',sep=''),paper='a4r')
@@ -686,3 +686,4 @@ print("04-Rstats02.R complete.")
 #     dev.off()
 #   }
 # }
+print("04-Rstats02.R complete.")
