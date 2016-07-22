@@ -1,5 +1,6 @@
 ### Load necessary libraries (all CRAN libraries can be acquired using install.packages)
 library(compiler)
+library(nnet)
 library(AnalyzeFMRI)
 library(MASS)
 library(abind)
@@ -7,7 +8,7 @@ library(fda)
 library(fields)
 library(speedglm)
 library(pracma)
-library(lattice)
+#library(lattice)
 library(tclust)
 library(NbClust)
 library(capushe)
@@ -15,44 +16,44 @@ library(capushe)
 ### Parse CMD Line Arguments
 args <- commandArgs(trailingOnly = TRUE)
 indir <- args[1]
-
 mask_fn <- args[2]
 
+#print args
 print(c('1indir', indir))
 print(c('4mask', mask_fn))
 
+#image size
 X_SIZE <- 130
 Y_SIZE <- 640
 Z_SIZE <- 300
 
-load(file = paste0(indir,"/scalingparams.rdata"))
+#load presaved
+load(file=paste0(indir,'/scalingparams.rdata'))
 load(file=paste0(indir,'/centers.rdata'))
-load(file=paste(indir,'/clustering.rdata',sep=''))
-load(file=paste(indir,'/image_hold.rdata',sep=''))
-load(file=paste(indir,'/predicted_means.rdata',sep=''))
-load(file=paste(indir,'/correlation_matrix.rdata',sep=''))
-load(file=paste(indir,'/mean_image.rdata',sep=''))
-load(file=paste0(indir,"/cluster_allocations.rdata"))
+load(file=paste0(indir,'/clustering.rdata'))
+load(file=paste0(indir,'/image_hold.rdata'))
+load(file=paste0(indir,'/predicted_means.rdata'))
+load(file=paste0(indir,'/correlation_matrix.rdata'))
+load(file=paste0(indir,'/mean_image.rdata'))
+load(file=paste0(indir,'/cluster_allocations.rdata'))
 comp<-dim(clustering)[1]
 
-### Load Mask File
-print(paste("Loading mask ", mask_fn, sep=""))
-MASK <- f.read.nifti.volume(mask_fn)
-MASK <- MASK[,,,1]
-### Dummy Mask
-D_Mask <- array(NA,c(Z_SIZE,Y_SIZE,X_SIZE))
+# ### Load Mask File
+# print(paste("Loading mask ", mask_fn, sep=""))
+# MASK <- f.read.nifti.volume(mask_fn)
+# MASK <- MASK[,,,1]
+# ### Dummy Mask
+# D_Mask <- array(NA,c(Z_SIZE,Y_SIZE,X_SIZE))
+# 
+# for (ss in 1:Z_SIZE) {
+#   for (ii in 1:Y_SIZE) {
+#     for (jj in 1:X_SIZE) {
+#       D_Mask[ss,ii,jj] <- MASK[ii,jj,ss]>=.99995
+#     }
+#   }
+# }
+# ssDM <- sum(D_Mask)
 
-for (ss in 1:Z_SIZE) {
-  for (ii in 1:Y_SIZE) {
-    for (jj in 1:X_SIZE) {
-      D_Mask[ss,ii,jj] <- MASK[ii,jj,ss]>=.99995
-    }
-  }
-}
-ssDM <- sum(D_Mask)
-
-
-#clustering_cluster <- tmeansClust_lowmem(big_mat,clustering)    
 
 
 # Define a function that obtains the Moore neighborhood
@@ -106,7 +107,7 @@ vN_nbh <- function(input,dist,x_co,y_co, z_co) {
 # put into the function, the average count from each of the
 # 4 classes, within the Moore neighborhood of distance 1
 # around each coordinate (x,y).
-eta_fun <- function(input,dist, weighting) {
+eta_fun <- function(input,dist, weighting, n_func) {
   count <- 1
   classes <- max(input,na.rm=TRUE)
   
@@ -123,43 +124,42 @@ eta_fun <- function(input,dist, weighting) {
       for(z in 1:z_size) {
         
         for(i in 1:classes){
-            output[count,i] <- weighting[i]*mean(Moore_nbh(input,dist,x,y, z)==i,na.rm=T) 
+            output[count,i] <- mean(n_func(input,dist,x,y, z)==i,na.rm=T) 
         }
         
         count <- count + 1
       }
     }
   }
+  #recode to do weightings
+  #output<-weighting*output 
   return(output)
 }  
-  
-mrf_val <- eta_fun(image_hold,1)
-# Construct an MRF from the image and neighbourhood function
-# eta_fun using the multinomial regression function multinom.
 
+
+# 
+image_hold<-image_hold[80:100,80:100,80:100]
+
+print("Doing MRF smoothing...")
+# 
+#   
+ mrf_val <- eta_fun(image_hold,1, rep(1,27), Moore_nbh)
+# # Construct an MRF from the image and neighbourhood function
+# # eta_fun using the multinomial regression function multinom.
+# 
 df <- data.frame(y=c(image_hold),x=mrf_val)
 MRF_1 <- multinom(y~., data=df) 
 
-# Obtain the parameter estimates from the fitted MRF model.
-summary(MRF_1)
-
-# Compute the PLIC value of the fitted MRF model.
-BIC(MRF_1)
-
-# Plot an image of the obtained estimated signals from the
-# MRF model.
 smooth_im_1 <- (predict(MRF_1 ))
-#table(smooth_im_1 )
-#table(image_hold)
 
+table(smooth_im_1 )
+table(image_hold)
 
-testout1<-image_hold
-testout1[is.na(testout1)]<-0
-testout2<-array(smooth_im_1, dim = dim(testout1))
-
-#also stuff is getting jumbled here
-
-f.write.nifti(testout1 ,file='./testorig.nii', nii=TRUE)
-f.write.nifti(testout2 ,file='./testorig2.nii', nii=TRUE)
+mrfout<-array(as.numeric(smooth_im_1), dim = dim(image_hold))
+mrfout[is.na(mrfout)]<-0
+image_hold[is.na(image_hold)]<-0
+# #also stuff is getting jumbled here
+f.write.nifti(mrfout,file=paste0(indir,'/mrf_cluster.nii'), size= "float", nii=TRUE)
+f.write.nifti(image_hold,file=paste0(indir,'/cluster.nii'), size= "float", nii=TRUE)
 
 
