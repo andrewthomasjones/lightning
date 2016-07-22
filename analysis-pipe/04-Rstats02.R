@@ -609,12 +609,15 @@ image.plot(1:comp,1:comp,CORR)
 dev.off()
 
 
-print("04-Rstats02.R complete.")
-
 # Hierachical Clustering ------------------------------
 # # Make a distance metric
-# DIST <- as.dist(1-t(CORR))
-# HCLUST <- hclust(DIST,method='average')
+DIST <- as.dist(1-t(CORR))
+HCLUST <- hclust(DIST,method='average')
+
+pdf(paste(indir,'/Correlation_matrix.pdf',sep=''),paper='a4r')
+plot(HCLUST)
+dev.off()
+print("04-Rstats02.R complete.")
 # # 
 # # # Make tree cut using Dunn Index
 # #NB <- NbClust( diss=DIST,distance=NULL,method='average',index='silhouette',max.nc=ceiling(comp-2))
