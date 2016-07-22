@@ -602,15 +602,16 @@ print("Analysis done and saved. Producing and saving plots.")
 #   dev.off()
 # }
 
-pred.df<-data.frame(t(PRED))
-names(pred.df) <- paste0("Cluster ", 1:comp)
-pred.df$Time<-seq(0,dim(PRED)[2]-1,1)
-pred.df.flat<-melt(pred.df, id='Time')
-pred.df.flat$Signal<-pred.df.flat$value
-
-pdf(paste(indir,'/All_Cluster_Mean_Function.pdf',sep=''),paper='a4')
-ggplot(data=pred.df.flat)+geom_line(aes(y=Signal, x=Time))+facet_wrap(~variable)+theme_bw()
-dev.off()
+##R version issue here
+# pred.df<-data.frame(t(PRED))
+# names(pred.df) <- paste0("Cluster ", 1:comp)
+# pred.df$Time<-seq(0,dim(PRED)[2]-1,1)
+# pred.df.flat<-melt(pred.df, id='Time')
+# pred.df.flat$Signal<-pred.df.flat$value
+# 
+# pdf(paste(indir,'/All_Cluster_Mean_Function.pdf',sep=''),paper='a4')
+# ggplot(data=pred.df.flat)+geom_line(aes(y=Signal, x=Time))+facet_wrap(~variable)+theme_bw()
+# dev.off()
 
 # Plot the Correlation matrix
 pdf(paste(indir,'/Correlation_matrix.pdf',sep=''),paper='a4r')
@@ -625,8 +626,6 @@ HCLUST <- hclust(DIST,method='average')
 pdf(paste(indir,'/Correlation_matrix.pdf',sep=''),paper='a4r')
 plot(HCLUST)
 dev.off()
-
-
 print("04-Rstats02.R complete.")
 # # 
 # # # Make tree cut using Dunn Index
