@@ -73,34 +73,7 @@ ssDM <- sum(D_Mask)
 
 
 
-### Make big matrix to store all series voxels that are unmasked
-Basis_number <- 100
-print(paste("Trying to allocate matrix of size (approx)", round(X_SIZE*Y_SIZE*Z_SIZE*Basis_number*8/(1024^3),2), " GB..."))
-big_mat <- matrix(NA,ssDM,Basis_number)
-Count <- 0
-for (ss in 1:Z_SIZE) {
-  load(paste(indir,'/coeff_mat_',ss,'.rdata',sep=''))
-  InCount <- 0
-  for (ii in 1:Y_SIZE) {
-    for (jj in 1:X_SIZE) {
-      InCount <- InCount + 1
-      if(D_Mask[ss,ii,jj]) {
-        Count <- Count + 1
-        big_mat[Count,] <- coeff_mat[InCount,]
-      }
-    }
-  }
-  print(paste("Loading slice", c(ss), "of", Z_SIZE))
-}
-### Scale the coeffient matrix for K-means
-#big_mat <- scale(big_mat)
-## Remove big_mat for memory saving
-#rm(big_mat)
 
-#scales inplace, returns means and sd for later use
-mean_sd_from_unscaled<-scale_lowmem(big_mat)
-save(mean_sd_from_unscaled, file = paste0(indir,"/scalingparams.rdata"))
-print("Matrix successfully loaded and rescaled.")
 
 ### Declare what files to load in
 ### Remove time points that do not look stationary
@@ -118,6 +91,8 @@ file_number <- (file_number-1)*Z_SIZE + ss
 
 #probably put a better check here
 if(!file.exists(paste0(indir,'/clustering.rdata')) | !file.exists(paste0(indir,'/centers.rdata')) ){
+  
+  print("Pre-saved clustering doesn't exist. Beginning clustering process..")
   ### Set working directory for computation
   # BAD post-doc, do not do this. (this made things fail later)
   # see changes to list.files below also
@@ -156,8 +131,13 @@ if(!file.exists(paste0(indir,'/clustering.rdata')) | !file.exists(paste0(indir,'
       file_list <- list.files(path=indir, pattern='R-out-.*.nii', full.names=FALSE)
       #file_list <- file_list[grep('.nii',file_list)]
       file_number <- as.numeric(substr(file_list,7,12))
-  
-      file_list <- file_list[which(file_number>FROM & file_number<=TO)]
+      
+      if(FROM==TO){
+        file_list <- file_list # what do when from and to are both zero basically
+      }else{
+          file_list <- file_list[which(file_number>FROM & file_number<=TO)]
+      }
+      
       file_number <- as.numeric(substr(file_list,7,12)) - FROM
   
       file_number.old <- file_number
@@ -166,6 +146,7 @@ if(!file.exists(paste0(indir,'/clustering.rdata')) | !file.exists(paste0(indir,'
   
       ### Declare number of time slices left and initialize list
       N <- length(file_number)
+      print(paste(N, "timeslices to read."))
       full_array <- list()
   
       ### Read in Z slices
@@ -223,6 +204,36 @@ if(!file.exists(paste0(indir,'/clustering.rdata')) | !file.exists(paste0(indir,'
   
   }
   
+  
+  ### Make big matrix to store all series voxels that are unmasked
+  Basis_number <- 100
+  print(paste("Trying to allocate matrix of size (approx)", round(X_SIZE*Y_SIZE*Z_SIZE*Basis_number*8/(1024^3),2), " GB..."))
+  big_mat <- matrix(NA,ssDM,Basis_number)
+  Count <- 0
+  for (ss in 1:Z_SIZE) {
+    load(paste(indir,'/coeff_mat_',ss,'.rdata',sep=''))
+    InCount <- 0
+    for (ii in 1:Y_SIZE) {
+      for (jj in 1:X_SIZE) {
+        InCount <- InCount + 1
+        if(D_Mask[ss,ii,jj]) {
+          Count <- Count + 1
+          big_mat[Count,] <- coeff_mat[InCount,]
+        }
+      }
+    }
+    print(paste("Loading slice", c(ss), "of", Z_SIZE))
+  }
+  
+  ### Scale the coeffient matrix for K-means
+  #big_mat <- scale(big_mat)
+  ## Remove big_mat for memory saving
+  #rm(big_mat)
+  
+  #scales inplace, returns means and sd for later use
+  mean_sd_from_unscaled<-scale_lowmem(big_mat)
+  save(mean_sd_from_unscaled, file = paste0(indir,"/scalingparams.rdata"))
+  print("Matrix successfully loaded and rescaled.")
   
   # TRIMMED K-MEANS CLUSTERING ------------------------
  
