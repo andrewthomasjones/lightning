@@ -132,8 +132,12 @@ if(!file.exists(paste0(indir,'/clustering.rdata')) | !file.exists(paste0(indir,'
       #file_list <- file_list[grep('.nii',file_list)]
       file_number <- as.numeric(substr(file_list,7,12))
       
-      if(FROM==TO){
-        file_list <- file_list # what do when from and to are both zero basically
+      if(FROM==0){# what do when from and to are both zero basically
+        if(TO==0){
+          TO_2 = min(3500,max(file_number))
+        }else{TO_2 = TO}
+        
+        file_list <- file_list[which(file_number>=1000& file_number<=TO_2)] #this throws out first image no matter what, maybe change
       }else{
           file_list <- file_list[which(file_number>FROM & file_number<=TO)]
       }
