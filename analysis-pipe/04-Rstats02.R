@@ -345,10 +345,44 @@ if(!file.exists(paste0(indir,'/clustering.rdata')) | !file.exists(paste0(indir,'
 load(file = paste0(indir,"/scalingparams.rdata"))
 load(file=paste0(indir,'/centers.rdata'))
 load(file=paste(indir,'/clustering.rdata',sep=''))
-load(file=paste(indir,'/image_hold.rdata',sep=''))
-load(file=paste(indir,'/predicted_means.rdata',sep=''))
-load(file=paste(indir,'/correlation_matrix.rdata',sep=''))
-load(file=paste(indir,'/mean_image.rdata',sep=''))
+
+
+#load(file=paste(indir,'/image_hold.rdata',sep=''))
+#load(file=paste(indir,'/predicted_means.rdata',sep=''))
+#load(file=paste(indir,'/correlation_matrix.rdata',sep=''))
+#load(file=paste(indir,'/mean_image.rdata',sep=''))
+
+
+### Make big matrix to store all series voxels that are unmasked
+Basis_number <- 100
+print(paste("Trying to allocate matrix of size (approx)", round(X_SIZE*Y_SIZE*Z_SIZE*Basis_number*8/(1024^3),2), " GB..."))
+big_mat <- matrix(NA,ssDM,Basis_number)
+Count <- 0
+for (ss in 1:Z_SIZE) {
+  load(paste(indir,'/coeff_mat_',ss,'.rdata',sep=''))
+  InCount <- 0
+  for (ii in 1:Y_SIZE) {
+    for (jj in 1:X_SIZE) {
+      InCount <- InCount + 1
+      if(D_Mask[ss,ii,jj]) {
+        Count <- Count + 1
+        big_mat[Count,] <- coeff_mat[InCount,]
+      }
+    }
+  }
+  print(paste("Loading slice", c(ss), "of", Z_SIZE))
+}
+
+### Scale the coeffient matrix for K-means
+#big_mat <- scale(big_mat)
+## Remove big_mat for memory saving
+#rm(big_mat)
+
+#scales inplace, returns means and sd for later use
+mean_sd_from_unscaled<-scale_lowmem(big_mat)
+save(mean_sd_from_unscaled, file = paste0(indir,"/scalingparams.rdata"))
+print("Matrix successfully loaded and rescaled.")
+
 
 comp<-dim(clustering)[1]
 
@@ -375,11 +409,13 @@ image_hold[is.na(image_hold)]<-0
 f.write.nifti(image_hold,file=paste0(indir,'/clusters.nii'), nii=TRUE)
 
 image.plot(1:Y_SIZE,1:X_SIZE,image_hold[Z_SIZE,,])
+
+
 # 
 # ### Obtain the cluster mean time series
 # # Reload Graphing Parameters (These values are specific to F03 and F04)
- file_number <- file_number.old
- max_file <- max(file_number)
+file_number <- file_number.old
+max_file <- max(file_number)
 file_number <- (file_number-1)*Z_SIZE + ss
 Basis_number <- Basis_number
 Basis <- create.bspline.basis(c(0,(max_file-1)*Z_SIZE+Z_SIZE),nbasis=Basis_number)
@@ -388,13 +424,6 @@ BS <- eval.basis(file_number,Basis)
 centers <- clustering
 #centers <- sweep(centers,2,attributes(big_mat)$'scaled:scale','*')
 #centers <- sweep(centers,2,attributes(big_mat)$'scaled:center','+')
-
-
-
-
-
-
-
 
 #reload scaling if need be
 if(!exists("mean_sd_from_unscaled")){
@@ -405,8 +434,6 @@ if(!exists("mean_sd_from_unscaled")){
 
 centers <- sweep(centers,2,mean_sd_from_unscaled[1,],'*')
 centers <- sweep(centers,2,mean_sd_from_unscaled[2,],'+')
-
-
 
 pred_range <- eval.basis(seq(1,((max_file-1)*Z_SIZE+Z_SIZE),1000),Basis)
 
