@@ -19,10 +19,11 @@ library(Rcpp)
 library(RcppEigen)
 library(RcppArmadillo)
 
-#needs to be c++ 11 because I used the tuple class
-Sys.setenv("PKG_CXXFLAGS"="-std=c++11")
-if(file.exists('./bin/tkmeans.cpp')){sourceCpp('./bin/tkmeans.cpp')} #for testing
-if(file.exists('./tkmeans.cpp')){sourceCpp('./tkmeans.cpp')} #actual file structure
+library(lowmemtkmeans)
+# #needs to be c++ 11 because I used the tuple class
+# Sys.setenv("PKG_CXXFLAGS"="-std=c++11")
+# if(file.exists('./bin/tkmeans.cpp')){sourceCpp('./bin/tkmeans.cpp')} #for testing
+# if(file.exists('./tkmeans.cpp')){sourceCpp('./tkmeans.cpp')} #actual file structure
 
 ### Enable Just In Time Compiling, for ????MAYBE???? more speed.
 enableJIT(3)
@@ -44,16 +45,16 @@ print(c('3TO', TO))
 print(c('4mask', mask_fn))
 
 # #
-# X_SIZE <- 70
-# Y_SIZE <- 170
-# Z_SIZE <- 150
+ X_SIZE <- 70
+ Y_SIZE <- 170
+ Z_SIZE <- 150
 
 # new crop sizes BAD post-doc... Swap X and Y later...
 #this will be approximately 18.6 GB in RAM with 100 basis function params
 
-X_SIZE <- 130
-Y_SIZE <- 640
-Z_SIZE <- 300
+#X_SIZE <- 130
+#Y_SIZE <- 640
+#Z_SIZE <- 300
 
 
 ### Load Mask File
@@ -72,7 +73,7 @@ for (ss in 1:Z_SIZE) {
 ssDM <- sum(D_Mask)
 
 
-
+######################################################################################################################
 
 
 ### Declare what files to load in
@@ -90,7 +91,7 @@ file_number <- (file_number-1)*Z_SIZE + ss
 
 
 #probably put a better check here
-if(!file.exists(paste0(indir,'/clustering.rdata')) | !file.exists(paste0(indir,'/centers.rdata')) ){
+#if(!file.exists(paste0(indir,'/clustering.rdata')) | !file.exists(paste0(indir,'/centers.rdata')) ){
 
   print("Pre-saved clustering doesn't exist. Beginning clustering process..")
   ### Set working directory for computation
@@ -190,7 +191,7 @@ if(!file.exists(paste0(indir,'/clustering.rdata')) | !file.exists(paste0(indir,'
 
       ### Declare number of bases to use
       Basis_number <- 100
-      Basis <- create.bspline.basis(c(0,(max_file-1)*Z_SIZE+Z_SIZE),
+      Basis <- create.bspline.basis(c(0,(max_file-1)*Z_SIZE+Z_SIZE), 
                                     nbasis=Basis_number)
       BS <- eval.basis(file_number,Basis)
 
@@ -206,7 +207,7 @@ if(!file.exists(paste0(indir,'/clustering.rdata')) | !file.exists(paste0(indir,'
       save(coeff_mat,file=paste(indir,'/coeff_mat_',ss,'.rdata',sep=''))
     }
 
-  }
+  #}
 
 
   ### Make big matrix to store all series voxels that are unmasked
@@ -259,7 +260,12 @@ if(!file.exists(paste0(indir,'/clustering.rdata')) | !file.exists(paste0(indir,'
   # }
   if(file.exists(paste0(indir,'/centers.rdata'))){load(file=paste0(indir,'/centers.rdata'))}
 
+  ####################################################################################################
+  
+  
   if(!exists('clustering')){
+    
+    
     print("Doing clustering")
     ### Compute BIC over a range of K (here 50--100)
     BIC_val <- c()
@@ -329,6 +335,8 @@ if(!file.exists(paste0(indir,'/clustering.rdata')) | !file.exists(paste0(indir,'
     comp<-dim(clustering)[1]
 
   }
+  
+  
   ### Function for allocating observations to cluster from a tkmeans clustering
   # tmeansClust <- function(fit,data) {
   #   apply(as.matrix(pdist2(data,t(fit$center))),1,which.min)
@@ -341,6 +349,8 @@ if(!file.exists(paste0(indir,'/clustering.rdata')) | !file.exists(paste0(indir,'
   save(clustering_cluster,file=paste(indir,'/clustering.rdata',sep=''))
 }
 
+############################################################################################################################################
+  
 #reload params
 load(file = paste0(indir,"/scalingparams.rdata"))
 load(file=paste0(indir,'/centers.rdata'))
@@ -728,4 +738,4 @@ dev.off()
 #     dev.off()
 #   }
 # }
-print("04-Rstats02.R complete.")
+print("04-Rstats_methods_test.R complete.")
