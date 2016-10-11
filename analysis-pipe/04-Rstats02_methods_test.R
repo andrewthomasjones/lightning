@@ -109,7 +109,7 @@ file_number <- (file_number-1)*Z_SIZE + ss
     #Completed_output <- Completed_output[grep('coeff_mat',Completed_output)]
     ### Skip things already in Completed_output
 
-    if (paste('coeff_mat_',ss,'.rdata',sep='')%in%Completed_output){
+    if (paste('coeff_mat_',ss,'.rdata',sep='')%in%Completed_output & paste('coeff_mat_lspec_',ss,'.rdata',sep='')%in%Completed_output & paste('coeff_mat_spec_',ss,'.rdata',sep='')%in%Completed_output){
       print(paste('coeff_mat_', ss, '.rdata', ' exists, loading', sep=''))
 
 
@@ -133,15 +133,15 @@ file_number <- (file_number-1)*Z_SIZE + ss
       #file_list <- file_list[grep('.nii',file_list)]
       file_number <- as.numeric(substr(file_list,7,12))
 
-      if(FROM==0){# what do when from and to are both zero basically
-        if(TO==0){
-          TO_2 = min(3500,max(file_number))
-        }else{TO_2 = TO}
-
-        file_list <- file_list[which(file_number>=1000& file_number<=TO_2)] #this throws out first image no matter what, maybe change
-      }else{
-          file_list <- file_list[which(file_number>FROM & file_number<=TO)]
-      }
+      # if(FROM==0){# what do when from and to are both zero basically
+      #   if(TO==0){
+      #     TO_2 = min(3500,max(file_number))
+      #   }else{TO_2 = TO}
+      # 
+      #   file_list <- file_list[which(file_number>=1000& file_number<=TO_2)] #this throws out first image no matter what, maybe change
+      # }else{
+      #     file_list <- file_list[which(file_number>FROM & file_number<=TO)]
+      # }
 
       file_number <- as.numeric(substr(file_list,7,12)) - FROM
 
@@ -200,11 +200,34 @@ file_number <- (file_number-1)*Z_SIZE + ss
       print(c('Spline fitting',ss))
       FD <- smooth.basisPar(file_number,t(full_mat),Basis)
       coeff_mat <- as.matrix(t(FD$fd$coefs))
-
+      
+      
+      k_base = 2
+      pred_points<-seq(from = 0, to = (max_file-1)*Z_SIZE+Z_SIZE, length.out = Basis_number*k_base)
+      #get spline predictions
+      spline_pred <-predict(FD, pred_points)
+      spline_spectrum <- spectrum(spline_pred, spans = 3)# is this a good smoothig choice?
+      spline_spec <- spline_spectrum$spec
+      spline_lspec <- log(spline_spec)
+      spline_freq <-spline_spectrum$freq
+      
+      #sprectrum splines
+      Basis_number_2 <- 100
+      pred_points_2<-seq(from = 0, to = max(spline_freq), length.out = Basis_number_2)
+      Basis_2 <- create.bspline.basis(c(0,max(spline_freq)), nbasis=Basis_number_2)
+      FD_2 <- smooth.basisPar(pred_points_2, t(spline_spec), Basis_2)
+      coeff_mat_spec <- as.matrix(t(FD_2$fd$coefs))
+      
+      #log of spectrum
+      FD_3 <- smooth.basisPar(pred_points_2, t(spline_lspec), Basis_2)
+      coeff_mat_lspec <- as.matrix(t(FD_3$fd$coefs))
 
       ### Save the results in the format coeff_mat_(SLICE NUMBER).rdata
       print(paste('Saving as: ', indir, '/coeff_mat_', ss, '.rdata', sep=''))
       save(coeff_mat,file=paste(indir,'/coeff_mat_',ss,'.rdata',sep=''))
+      save(coeff_mat_spec,file=paste(indir,'/coeff_mat_spec_',ss,'.rdata',sep=''))
+      save(coeff_mat_lspec,file=paste(indir,'/coeff_mat_lspec_',ss,'.rdata',sep=''))
+    }
     }
 
   #}
