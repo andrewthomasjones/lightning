@@ -453,7 +453,7 @@ file_number <- (file_number-1)*Z_SIZE + ss
 
   print("Doing some more analysis on clustering results...")
   ### Get a clustering using the tkmeans clustering form variable "clustering"
-  clustering_cluster <- tmeansClust_lowmem(big_mat,clustering)
+  clustering_cluster <- nearest_cluster(big_mat,clustering)
   ## save cluster allocations
   save(clustering_cluster,file=paste(indir,'/', name,'clustering.rdata',sep=''))
   
