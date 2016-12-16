@@ -1,0 +1,44 @@
+# CMakeFiles.txt for volcorrts
+#
+# Andrew Janke - a.janke@gmail.com
+#
+# do this:
+# export CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH:/opt/minc-itk4/lib
+# to ensure that CMake finds /opt/minc/lib/LIBMINCConfig.cmake
+
+PROJECT(volcorrts)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+ENABLE_LANGUAGE(C)
+
+# load any modules used in this project
+SET(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake-modules")
+
+# find the pre-requisites
+FIND_PACKAGE(LIBMINC REQUIRED)
+
+# get current version from git tag
+EXECUTE_PROCESS(COMMAND git describe
+   OUTPUT_VARIABLE VERSION_STRING
+   OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+ADD_DEFINITIONS(-DPACKAGE_NAME="${CMAKE_PROJECT_NAME}")
+ADD_DEFINITIONS(-DPACKAGE_VERSION="${VERSION_STRING}")
+ADD_DEFINITIONS(-DPACKAGE_BUGREPORT="a.janke@gmail.com")
+
+# set compile options
+INCLUDE( ${LIBMINC_USE_FILE} )
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+LINK_LIBRARIES(${LIBMINC_LIBRARIES})
+
+IF(HAVE_MINC1)
+  ADD_DEFINITIONS(-DHAVE_MINC -DHAVE_MINC1)
+ENDIF(HAVE_MINC1)
+
+ADD_EXECUTABLE(volcorrts
+   volcorrts.c
+   )
+
+TARGET_LINK_LIBRARIES(volcorrts)
+
+# what and where to install
+INSTALL( TARGETS volcorrts DESTINATION bin )

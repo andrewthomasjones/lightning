@@ -1,0 +1,7 @@
+This is volcorrts - it does correlation between time series in a 3D minc volume. 
+
+Comments and changes to: a.janke@gmail.com
+
+A typical use case is as suchL
+
+   volcorrts in_ts.mnc  out_plot.mnc
