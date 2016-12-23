@@ -38,13 +38,13 @@ library(lowmemtkmeans)
 # TO <- as.numeric(args[4])
 # mask_fn <- args[5]
 
-NAME<-'/media/andrew/Port/20150628_5dpf_H2BS_CON_LR_F03/'
-#NAME<-'/media/andrew/Port/20150629_6dpf_H2BS_PTZ_LR_F1_1/'
+#NAME<-'/media/andrew/Port/20150628_5dpf_H2BS_CON_LR_F03/'
+NAME<-'/media/andrew/Port/20150629_6dpf_H2BS_PTZ_LR_F1_1/'
 
 indir<-  paste0(NAME,"03-chunk02_old")
 outdir <- paste0(NAME,"TIMEMIPS")
 FROM <- 55
-TO <- 1000
+TO <- 2200
 mask_fn  <-paste0(indir, "/mask.nii")
 
 if(!dir.exists(outdir)){
@@ -85,21 +85,21 @@ Z_SIZE <- 300
 # Z_SIZE <- 175
 
 
-### Load Mask File
-print(paste("Loading mask ", mask_fn, sep=""))
-MASK <- f.read.nifti.volume(mask_fn)
-MASK <- MASK[,,,1]
-### Dummy Mask
-D_Mask <- array(NA,c(Z_SIZE,Y_SIZE,X_SIZE))
-
-for (ss in Z_START:(Z_SIZE+Z_START)) {
-  for (ii in Y_START:(Y_SIZE+Y_START)) {
-    for (jj in X_START:(X_SIZE+X_START))  {
-      D_Mask[ss-Z_START,ii-Y_START,jj-X_START] <- MASK[ii, jj, ss]>=.99995
-    }
-  }
-}
-ssDM <- sum(D_Mask)
+# ### Load Mask File
+# print(paste("Loading mask ", mask_fn, sep=""))
+# MASK <- f.read.nifti.volume(mask_fn)
+# MASK <- MASK[,,,1]
+# ### Dummy Mask
+# D_Mask <- array(NA,c(Z_SIZE,Y_SIZE,X_SIZE))
+# 
+# for (ss in Z_START:(Z_SIZE+Z_START)) {
+#   for (ii in Y_START:(Y_SIZE+Y_START)) {
+#     for (jj in X_START:(X_SIZE+X_START))  {
+#       D_Mask[ss-Z_START,ii-Y_START,jj-X_START] <- MASK[ii, jj, ss]>=.99995
+#     }
+#   }
+# }
+# ssDM <- sum(D_Mask)
 
 
 ### Declare what files to load in
@@ -119,7 +119,11 @@ snap_mips <- array(NA,c(Z_SIZE,Y_SIZE,X_SIZE))
 snap_mips_detrend <- array(NA,c(Z_SIZE,Y_SIZE,X_SIZE))
 progress<-0 
 
-if(file.exists(paste(outdir,'/progress.rdata',sep=''))){load(file=paste(outdir,'/progress.rdata',sep=''))}
+if(file.exists(paste(outdir,'/progress.rdata',sep=''))){
+  load(file=paste(outdir,'/progress.rdata',sep=''))
+  load(file=paste(outdir,'/snap_mips.rdata',sep=''))
+  load(file=paste(outdir,'/snap_mips_detrend.rdata',sep=''))
+  }
 
 start_val=progress+1
   ### Fit Splines to the time series in each of the slice files (ss loops over slices)
