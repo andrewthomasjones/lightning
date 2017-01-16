@@ -41,12 +41,12 @@ library(lowmemtkmeans)
 
 NAME<-'/media/andrew/Port/20150628_5dpf_H2BS_CON_LR_F03/'
 indir<-  paste0(NAME,"03-chunk02_old")
-outdir <- paste0(NAME,"slice_140_160_B")
+outdir <- paste0(NAME,"140_160_100base")
 FROM <- 60
 TO <- 1000
 mask_fn  <-paste0(indir, "/mask.nii")
 min_activity<-0
-Basis_number <- 40
+Basis_number <- 100
 
 ylimits1<-(c(-0.03,0.03))
 

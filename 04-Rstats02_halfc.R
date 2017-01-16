@@ -39,26 +39,26 @@ library(lowmemtkmeans)
 # TO <- as.numeric(args[4])
 # mask_fn <- args[5]
 
-#NAME<-'/media/andrew/Port/20150629_6dpf_H2BS_PTZ_LR_F1_1/'
-NAME<-'/media/andrew/Port/20150628_5dpf_H2BS_CON_LR_F03/'
+NAME<-'/media/andrew/Port/20150629_6dpf_H2BS_PTZ_LR_F1_1/'
+#NAME<-'/media/andrew/Port/20150628_5dpf_H2BS_CON_LR_F03/'
 indir<-  paste0(NAME,"03-chunk02_old")
-outdir <- paste0(NAME,"slice_147c")
+outdir <- paste0(NAME,"slice_130_150_active_3_b")
 FROM <- 60
-TO <- 1200 #2200 #1200
+TO <- 2200 #2200 #1200
 mask_fn  <-paste0(indir, "/mask.nii")
-min_activity<-0
+min_activity<-3
 Basis_number <- 100
 mask_cutoff <-.8
 ylimits1<-(c(-0.03,0.03))
 
 X_START <- 0
 Y_START <- 0
-Z_START <- 146
+Z_START <- 129
 
 
 X_SIZE <- 640#640
 Y_SIZE <- 130 #130
-Z_SIZE <- 1 #300
+Z_SIZE <- 20 #300
 
 
 ### These lines are kind of data dependent. I've determined what works for F11, F03, and F04.
@@ -351,12 +351,27 @@ if(!file.exists(paste0(outdir,'/params/clustering.rdata')) | !file.exists(paste0
     pred_splines2$time<-seq(from=0,to=0.2*(TO-FROM), length.out=(length(file_number)))
     
     dir.create(paste0(outdir,'/individual_plots/'))
+    
     #ggplot()+geom_line(data=pred_splines2,aes(y=X5,x=time), color='blue')+ geom_point(aes(x=2*(1:dim(full_mat2)[2]-1), y=full_mat2[5,]))
-    random_splines<-sample(X_SIZE*Y_SIZE,20)
+    random_splines<-array(0,20)
+    i=1
+    while(i<21){
+    temp<-sample(X_SIZE*Y_SIZE,1)
+    
+      if(active_mask[temp%/%Y_SIZE+1, temp%%Y_SIZE+1,s]){
+        random_splines[i]<-temp
+        i<-i+1
+      }
+    
+    }
+    
     for(i in 1:20){
+      
       p<-paste0("X",random_splines[i])
       plot<-ggplot()+geom_point(aes(x=seq(from=0,to=0.2*(TO-FROM), length.out=(length(file_number)/2)), y=mat_odds_detr[random_splines[i],]))+geom_line(data=pred_splines2,aes(y=get(p),x=time), color='blue') +scale_y_continuous("Intensity", limits=ylimits1)+scale_x_continuous("Time (s)")
-      pdf(paste0(outdir,'/individual_plots/point_', random_splines[i], '_slice_', s+Z_START, '.pdf',sep=''),paper='a4r')
+      x_loc <- random_splines[i]%/%Y_SIZE+1
+      y_loc <-random_splines[i]%%Y_SIZE+1
+      pdf(paste0(outdir,'/individual_plots/point_', x_loc+X_START, '_', y_loc+Y_START, '_', s+Z_START, '.pdf',sep=''),paper='a4r')
       print(plot)
       dev.off()
     }
@@ -366,6 +381,7 @@ if(!file.exists(paste0(outdir,'/params/clustering.rdata')) | !file.exists(paste0
     ### Save the results in the format coeff_mat_(SLICE NUMBER).rdata
     print(paste('Saving as: ', outdir, 'coeff_mats/coeff_mat_', s, '.rdata', sep=''))
     save(coeff_mat,file=paste(outdir,'/coeff_mats/coeff_mat_',s,'.rdata',sep=''))
+    save(active_mask,file=paste(outdir,'/coeff_mats/active_mask.rdata',sep=''))
     save(snap_mips, file=paste(outdir,'/mips/snap_mips_',s,'.rdata',sep=''))
     save(snap_mips_detrend, file=paste(outdir,'/mips/snap_mips_detrend_',s,'.rdata',sep=''))
     #save(snap_500, file=paste(outdir,'/images/snap_500.rdata',sep=''))
@@ -404,7 +420,7 @@ if(!file.exists(paste0(outdir,'/params/clustering.rdata')) | !file.exists(paste0
   print(paste("Trying to allocate matrix of size (approx)", round(X_SIZE*Y_SIZE*Z_SIZE*Basis_number*8/(1024^3),2), " GB..."))
   big_mat <- matrix(NA,ssDM,Basis_number)
   Count <- 0
-  
+  load(file=paste(outdir,'/coeff_mats/active_mask.rdata',sep=''))
   active_mask[ is.na(active_mask) ] <- FALSE
   load(file=paste(outdir,'/D_Mask.rdata',sep=''))
   for (s in 1:Z_SIZE) {
@@ -484,7 +500,7 @@ if(!file.exists(paste0(outdir,'/params/clustering.rdata')) | !file.exists(paste0
         TIME_DUMMY <- proc.time() - TIME
         #print(TIME_STORE)
         TIME_STORE[kk] <- TIME_DUMMY[1] + TIME_DUMMY[2]
-        #print(c(kk,BIC_val[kk]))
+        print(c(kk,BIC_val[kk]))
         # Save the results
         save(TIME_STORE,file=paste0(outdir,'/params/Time_store.rdata'))
         save(BIC_val,file=paste0(outdir,'/params/BIC_values.rdata'))
@@ -505,6 +521,8 @@ if(!file.exists(paste0(outdir,'/params/clustering.rdata')) | !file.exists(paste0
     SHDATA <- cbind(names_vec, shape_h, complexity_h, ave_log_like)
     DD <- DDSE(SHDATA)
     comp <- as.numeric(attributes(DD)$model)
+    
+    #comp<-18
     
     # ### Cluster using the optimal value for K
     # #clustering <- tkmeans(x=big_mat,k=comp,alpha=.9,nstart=5,iter.max=20)
@@ -562,7 +580,7 @@ for (s in 1:Z_SIZE) {
   for (j in 1:Y_SIZE) {
     for (i in 1:X_SIZE) {
       InCount <- InCount + 1
-      if(D_Mask[i,j,s]) {
+      if(D_Mask[i,j,s] & active_mask[i,j,s] ) {
         Count <- Count + 1
         big_mat[Count,] <- coeff_mat[InCount,]
       }
@@ -594,7 +612,7 @@ Count <- 0
 for (s in 1:Z_SIZE) {
   for (j in 1:Y_SIZE) {
     for (i in 1:X_SIZE) {
-      if (D_Mask[i,j,s]) {
+      if (D_Mask[i,j,s] & active_mask[i,j,s]) {
         Count <- Count + 1
         image_hold[i,j,s] <- clustering_cluster[Count]
       }
@@ -741,7 +759,7 @@ for (s in 1:Z_SIZE)
 {
   for (j in 1:Y_SIZE) {
     for (i in 1:X_SIZE) {
-      if (D_Mask[i,j,s]) {
+      if (D_Mask[i,j,s] & active_mask[i,j,s])  {
         count <- count + 1
         mean_image[i,j,s] <- MEAN_PRED[clustering_cluster[count]]
       }
