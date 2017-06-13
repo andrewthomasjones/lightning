@@ -56,27 +56,14 @@ if(!dir.exists(outdir)){
 
 ### Declare what files to load in
 ### Remove time points that do not look stationary
-file_list <- list.files(path=indir, pattern='R-out-.*.nii', full.names=FALSE)
-#file_list <- file_list[grep('.nii',file_list)]
-file_number <- as.numeric(substr(file_list,7,12))
-
-if(FROM==0){# what do when from and to are both zero basically
-  
-  if(TO==0){
-    TO_2 = min(3500,max(file_number))
-  }else{
-    TO_2 = TO
-  }
-  
-  file_list <- file_list[which(file_number>=1000& file_number<=TO_2)] #this throws out first image no matter what, maybe change
-  
-}else{
-  file_list <- file_list[which(file_number>FROM & file_number<=TO)]
-}
-print(mem_used())
+file_list_initial <- list.files(path=indir, pattern='R-out-.*.nii', full.names=FALSE)
+file_number_initial <- as.numeric(substr(file_list_initial,7,12))
+file_list <- file_list_initial[which(file_number_initial>FROM & file_number_initial<=TO)]
 file_number <- as.numeric(substr(file_list,7,12)) - FROM
-file_number.old <- file_number
+
+
 max_file <- max(file_number)
+file_number.old <- file_number
 file_number <- (file_number-1)*Z_SIZE + Z_SIZE+Z_START
 
 ### Declare number of time slices left and initialize list
@@ -84,7 +71,7 @@ N <- length(file_number)
 print(paste(N, "timeslices to read."))
 
 if(!file.exists(file=paste(outdir,'/settings.rdata',sep=''))){
-  save(header,N,max_file,file_number.old, file_list , X_START,Y_START,Z_START,X_SIZE,Y_SIZE,Z_SIZE,indir,outdir,FROM ,header,f1,ylimits1,TO , mask_cutoff,mask_fn ,min_activity,activity_range,Basis_number,file=paste(outdir,'/settings.rdata',sep=''))
+  save(header,N,max_file, file_number.old, file_list , X_START,Y_START,Z_START,X_SIZE,Y_SIZE,Z_SIZE,indir,outdir,FROM ,header,f1,ylimits1,TO , mask_cutoff,mask_fn ,min_activity,activity_range,Basis_number,file=paste(outdir,'/settings.rdata',sep=''))
 }else{
   load(file=paste(outdir,'/settings.rdata',sep=''))
 }
@@ -243,9 +230,10 @@ for (s in 1:Z_SIZE) {
     
     ### Fit B-spline to all time series
     print(c('Spline fitting',s))
+    print(length(file_number))
     
     which_odds<-(1:length(file_number))%%2 #SPLIT
-   
+    
     FD <- smooth.basisPar(file_number[!!which_odds],t(mat_odds_filt),Basis)
 
     coeff_mat <- as.matrix(t(FD$fd$coefs))
