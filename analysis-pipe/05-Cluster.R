@@ -19,25 +19,28 @@ library(lowmemtkmeans)
 
 ### Parse CMD Line Arguments
 args <- commandArgs(trailingOnly = TRUE)
-indir <- args[1]
-outdir <- args[2]
+indir_new <- args[1]
+outdir_new <- args[2]
 FROM <- as.numeric(args[3])
 TO <- as.numeric(args[4])
 mask_fn <- args[5]
 
 
-load(file=paste(indir,'/settings.rdata',sep=''))
+load(file=paste(indir_new,'/settings.rdata',sep=''))
+
+outdir<-outdir_new
+indir<-indir_new
 
 max_clust<-30 #speed up by making this look at smaller
 cut_p<-0.02
 
-X_START <- 0
-Y_START <- 0
-Z_START <- 0
-
-X_SIZE <- 640#640
-Y_SIZE <- 130 #130
-Z_SIZE <- 300#300
+# X_START <- 0
+# Y_START <- 0
+# Z_START <- 0
+# 
+# X_SIZE <- 640#640
+# Y_SIZE <- 130 #130
+# Z_SIZE <- 300#300
 
 
 ### These lines are kind of data dependent. I've determined what works for F11, F03, and F04.
@@ -76,11 +79,11 @@ if(!file.exists(paste0(outdir,'/clustering.rdata'))){
   
   print(paste("Trying to allocate matrix of size (approx)", round(ssDM_active*Basis_number*8/(1024^3),2), " GB..."))
   big_mat <- matrix(NA,ssDM_active,Basis_number)
-  Count <- 0
-
+  
  
+  Count <- 0
   for (s in 1:Z_SIZE) {
-    load(paste(indir2,'/coeff_mats/coeff_mat_',s,'.rdata',sep=''))
+    load(paste(indir,'/coeff_mats/coeff_mat_',s,'.rdata',sep=''))
     InCount <- 0
     for (j in 1:Y_SIZE) {
       for (i in 1:X_SIZE) {
@@ -93,7 +96,7 @@ if(!file.exists(paste0(outdir,'/clustering.rdata'))){
     }
     print(paste("Loading slice", c(s), "of", Z_SIZE))
   }
- 
+
   #scales inplace, returns means and sd for later use
   mean_sd_from_unscaled<-scale_mat_inplace(big_mat)
   save(mean_sd_from_unscaled, file = paste0(outdir,"/scalingparams.rdata"))
@@ -111,7 +114,7 @@ if(!file.exists(paste0(outdir,'/clustering.rdata'))){
     BIC_val <- array(0, max_clust)
     TIME_STORE <- array(0, max_clust)
     
-    load(file=paste(outdir,'/settings.rdata',sep=''))
+    #load(file=paste(outdir,'/settings.rdata',sep=''))
     
     # load any partial results already saved
     if(file.exists(paste0(outdir,'/Time_store.rdata'))){load(file=paste0(outdir,'/Time_store.rdata'))}
@@ -175,8 +178,9 @@ if(!file.exists(paste0(outdir,'/clustering.rdata'))){
 #reload params
 load(file = paste0(outdir,"/scalingparams.rdata"))
 load(file=paste0(outdir,'/centers.rdata'))
-load(file=paste(outdir,'/clustering.rdata',sep=''))
-load(file=paste(outdir,'/D_Mask.rdata',sep=''))
+load(file=paste(outdir,'/clustering.rdata',sep=''))#????
+
+load(file=paste(indir,'/D_Mask.rdata',sep=''))
 load(file=paste(outdir,'/MASK_active_adjusted.rdata',sep=''))
 load(file=paste(outdir,'/ssDM_active.rdata', sep=''))
 
@@ -186,7 +190,7 @@ Count <- 0
 
 #load(file=paste(outdir,'/D_Mask.rdata',sep=''))
 for (s in 1:Z_SIZE) {
-  load(paste(indir2,'/coeff_mats/coeff_mat_',s,'.rdata',sep=''))
+  load(paste(indir,'/coeff_mats/coeff_mat_',s,'.rdata',sep=''))
   InCount <- 0
   for (j in 1:Y_SIZE) {
     for (i in 1:X_SIZE) {
@@ -216,7 +220,7 @@ Count <- 0
 for (s in 1:Z_SIZE) {
   for (j in 1:Y_SIZE) {
     for (i in 1:X_SIZE) {
-      if (D_Mask[i,j,s] & active_mask[i,j,s]) {
+      if (D_Mask[i,j,s] & active_mask2[i,j,s]) {
         Count <- Count + 1
         image_hold[i,j,s] <- clustering_cluster[Count]
       }
@@ -247,8 +251,8 @@ Basis <- create.bspline.basis(c(0,(max_file-1)*Z_SIZE+Z_SIZE),nbasis=Basis_numbe
 BS <- eval.basis(file_number,Basis)
 
 # Compute the mean time series
-load(file=paste0(intdir,'/centers.rdata'))
-load(file = paste0(indir,"/scalingparams.rdata"))
+load(file=paste0(outdir,'/centers.rdata'))
+load(file = paste0(outdir,"/scalingparams.rdata"))
 centers <- clustering
 centers <-sweep(sweep(centers,2,mean_sd_from_unscaled[2,],'*'),2,mean_sd_from_unscaled[1,], '+')
 clustering_cluster <- nearest_cluster(big_mat,centers)
@@ -279,7 +283,7 @@ for (p in 1:dim(centers)[1]) {
   whom<-which(clustering_cluster==p)
   
   if(length(whom)>10){
-    n_samp<-min(100, length(whom))
+    n_samp<-min(50, length(whom))
     
     pred_to_plot <- array(NA,c(n_samp,dim(pred_range)[1]))
     sample_to_plot<- array(NA,c(n_samp,dim(big_mat)[2]))
@@ -369,8 +373,13 @@ ggplot(data=pred.df.flat)+geom_line(aes(y=Signal, x=Time))+facet_wrap(~variable)
 dev.off()
 
 # Plot the Correlation matrix
-pdf(paste(outdir,'/images/Correlation_matrix.pdf',sep=''),paper='a4r')
+pdf(paste(outdir,'/Correlation_matrix.pdf',sep=''),paper='a4r')
 image.plot(1:comp,1:comp,CORR)
+dev.off()
+
+# Plot Frequency Histogram
+pdf(paste0(outdir,'/cluster_functions/Frequency_of_clusters.pdf',sep=''),paper='a4r')
+plot(table(clustering_cluster),xlab='cluster',ylab='Frequency')
 dev.off()
 
 # Hierachical Clustering ------------------------------
@@ -379,12 +388,6 @@ DIST <- as.dist(1-t(CORR))
 HCLUST <- hclust(DIST,method='average')
 pdf(paste(outdir,'/cluster_functions/Cluster_dendrogram.pdf',sep=''),paper='a4r')
 plot(HCLUST)
-dev.off()
-
-
-# Plot Frequency Histogram
-pdf(paste0(outdir,'/cluster_functions/Frequency_of_clusters.pdf',sep=''),paper='a4r')
-plot(table(clustering_cluster),xlab='cluster',ylab='Frequency')
 dev.off()
 
 print("05-Cluster.R complete.")

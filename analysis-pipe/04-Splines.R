@@ -34,11 +34,11 @@ f1<-20
 
 X_START <- 0
 Y_START <- 0
-Z_START <- 250
+Z_START <- 0
 
 X_SIZE <- 640#640
 Y_SIZE <- 130 #130
-Z_SIZE <- 10#300
+Z_SIZE <- 300#300
 
 print(c('1indir', indir))
 print(c('2outdir', outdir))
