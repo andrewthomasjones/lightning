@@ -32,7 +32,7 @@ outdir<-outdir_new
 indir<-indir_new
 
 max_clust<-30 #speed up by making this look at smaller
-cut_p<-0.02
+cut_p<-0.03
 
 # X_START <- 0
 # Y_START <- 0
@@ -69,7 +69,7 @@ load(file=paste(indir,'/MASK_active.rdata',sep=''))
 
 if(!file.exists(paste0(outdir,'/clustering.rdata'))){
  
-  cutoff<-quantile(active_mask[D_Mask], probs=1-cut_p) 
+  cutoff<-quantile(active_mask[D_Mask], probs=1-cut_p, na.rm=T) 
   active_mask2 <- active_mask > cutoff
   active_mask2[ is.na(active_mask2) ] <- FALSE
   save(active_mask2,file=paste(outdir,'/MASK_active_adjusted.rdata',sep=''))

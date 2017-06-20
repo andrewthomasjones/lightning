@@ -16,7 +16,7 @@ $me = &basename($0, (".pl"));
 $input = "03-chunk02";
 $output = "04-Splines";
 $idir = "$ARGV[0]/$input";
-$fold = substr $ARGV[0], -31; 
+$fold = $fold = (split "/", $ARGV[0])[5]; 
 $odir = "/data/nif02/uqajon14/$fold/$output";
 $base = &basename($ARGV[0]);
 $mask = File::Spec->rel2abs("$idir/mask.nii");
