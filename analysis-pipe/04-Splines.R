@@ -1,4 +1,7 @@
-
+list.of.packages <- c('lattice', 'AnalyzeFMRI', 'ggplot2', 'reshape2', 'MASS', 'abind', 'fda', 'fields', 'speedglm','pracma', 'tclust', 'signal', 'capushe', 'pryr', 'lowmemtkmeans')
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+                 
 ### Load necessary libraries (all CRAN libraries can be acquired using install.packages)
 library(lattice)
 library(AnalyzeFMRI)
