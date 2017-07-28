@@ -1,4 +1,4 @@
-list.of.packages <- c('lattice', 'AnalyzeFMRI', 'ggplot2', 'reshape2', 'MASS', 'abind', 'fda', 'fields', 'speedglm','pracma', 'tclust', 'signal', 'capushe', 'pryr', 'lowmemtkmeans')
+list.of.packages <- c('parallel', 'lattice', 'AnalyzeFMRI', 'ggplot2', 'reshape2', 'MASS', 'abind', 'fda', 'fields', 'speedglm','pracma', 'tclust', 'signal', 'capushe', 'pryr', 'lowmemtkmeans')
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
                  
@@ -18,6 +18,9 @@ library(signal)
 library(capushe)
 library(pryr)
 library(lowmemtkmeans)
+library(parallel)
+
+
 
 ### Parse CMD Line Arguments
 args <- commandArgs(trailingOnly = TRUE)
@@ -112,6 +115,12 @@ if(!file.exists(file=paste(outdir,'/D_Mask.rdata',sep=''))){
   load(file=paste(outdir,'/MASK_hdr.rdata',sep=''))
   load(file=paste(outdir,'/D_Mask.rdata',sep=''))
 }
+
+# Calculate the number of cores
+no_cores <- detectCores() - 1
+
+# Initiate cluster
+cl <- makeCluster(no_cores)
 
 
 ### Fit Splines to the time series in each of the slice files (s loops over slices)
