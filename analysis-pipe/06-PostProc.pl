@@ -15,10 +15,12 @@ die "Need an input dir" if !defined($ARGV[0]);
 $me = &basename($0, (".pl"));
 $input = "04-Splines";
 $input2 = "05-Clusters";
+$input3b = "03-chunk02";
 $output = "06-PostProc";
 $idir = "$ARGV[0]/$input";
 $idir2 = "$ARGV[0]/$input2";
 $fold = (split "/", $ARGV[0])[4]; 
+$idir3 ="/data/nif02/uqajank2/SCAPE-MNC2/$fold/$input3b";
 $odir = "/data/nif02/uqajon14/$fold/$output";
 $base = &basename($ARGV[0]);
 $mask = File::Spec->rel2abs("$idir/mask.nii");
@@ -27,7 +29,7 @@ $mask = File::Spec->rel2abs("$idir/mask.nii");
 # run R random voxel stats
 chomp($from=`grep $base /data/nif02/uqajon14/00_FROM_TO.txt | cut -f2 -d' ' `);
 chomp($to=`grep $base /data/nif02/uqajon14/00_FROM_TO.txt | cut -f3 -d' ' `);
-&do_cmd("Rscript", "./temp/$me.R", $idir, $odir, $from, $to, $mask, $idir2);
+&do_cmd("Rscript", "./temp/$me.R", $idir, $odir, $from, $to, $mask, $idir2, $idir3);
 
 # run complete stats
 
