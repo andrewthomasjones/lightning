@@ -255,10 +255,13 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
 cl<-length(table(meta_mat[,4]))
 time<-dim(full_mat)[2]
 means<-array(0, c(time,cl))
+sds<-array(0, c(time,cl))
+
 for(i in 1:cl){
   means[,i]<-colMeans(full_mat[meta_mat[,4]==i,])
-  
+  sds[,i]<-sqrt(colMeans((full_mat[meta_mat[,4]==i,])^2)-(means[,i])^2)
 }
+
 
 evens<-as.vector((rep(c(F,T), length.out=time)))
 grand_mean<-mean(full_mat)
