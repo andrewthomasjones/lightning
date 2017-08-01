@@ -197,7 +197,7 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
   count <- 0
   count_bg <- 0
   full_mat <- matrix(NA,active_vox,N)
-  bg_mat <- matrix(0,1,N)
+  bg_mat <- matrix(0,2,N)
   meta_mat <- matrix(NA,active_vox,4)
   
   for (s in 1:Z_SIZE) {
@@ -229,15 +229,17 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
           }
           if(D_Mask[i,j,s]==T){
             count_bg <- count_bg + 1
-            bg_mat<-bg_mat+full_array[i+X_START,j+Y_START,]
+            bg_mat[1,]<-bg_mat[1,]+full_array[i+X_START,j+Y_START,]
+            bg_mat[2,]<-bg_mat[2,]+(full_array[i+X_START,j+Y_START,])^2
           }
           #print(c('storing',s,count))
         }
       }
       rm(full_array)
-      bg_mat<-bg_mat/count_bg
-  
+      bg_mat[1,]<-bg_mat[1,]/count_bg
+      bg_mat[2,]<-bg_mat[2,]-(bg_mat[1,]^2)
   }
+  
   print("Saving within cluster time series data") 
   save(full_mat,file=paste(outdir,'/time_series/main_data.rdata',sep=''))
   save(meta_mat,file=paste(outdir,'/time_series/meta_data.rdata',sep=''))
@@ -268,7 +270,7 @@ if(cl>1){
   image.plot(1:cl,1:cl,CORR)
   dev.off()
 }
-means<-cbind(means, t(bg_mat))
+means<-cbind(means, t(bg_mat[1,]))
   
 means2<-melt(means[evens==F,])
 names(means2)<-c("Index", "Cluster", "Value")
