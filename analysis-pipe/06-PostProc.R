@@ -39,7 +39,7 @@ indir3<-indir_new_3
 
 max_clust<-30 #speed up by making this look at smaller
 cut_p<-0.04
-merge_height<-0.5
+merge_height<-0.45  
 
 print(c('1indir', indir))
 print(c('2outdir', outdir))
@@ -138,13 +138,12 @@ for (c1 in 1:comp) {
   }
 }
 
-if(comp>2){
+
   # Hierachical Clustering ------------------------------
   # # Make a distance metric
   DIST <- as.dist(1-t(CORR))
   HCLUST <- hclust(DIST,method='average')
 
-}
 
 print(HCLUST$merge)
 print(HCLUST$height)
@@ -191,12 +190,14 @@ f.write.nifti(image_hold2,file=paste0(outdir,'/clusters/clusters_merge.nii'), ni
 save(image_hold2,file=paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))
 
 ###########################################
-if(!file.exists(paste(outdir,'/time_series/main_data.rdata',sep=''))){
+if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
   print("Reloading raw time series data") 
   active_vox<-sum(image_hold2>0)
   ### Store data into matrix instead of array
   count <- 0
+  count_bg <- 0
   full_mat <- matrix(NA,active_vox,N)
+  bg_mat <- matrix(0,1,N)
   meta_mat <- matrix(NA,active_vox,4)
   
   for (s in 1:Z_SIZE) {
@@ -225,22 +226,81 @@ if(!file.exists(paste(outdir,'/time_series/main_data.rdata',sep=''))){
             full_mat[count,] <- full_array[i+X_START,j+Y_START,]
             #x,y,z, cluster, 
             meta_mat[count,] <- c(i,j,s,image_hold2[i,j,s])
-            }
+          }
+          if(D_Mask[i,j,s]==T){
+            count_bg <- count_bg + 1
+            bg_mat<-bg_mat+full_array[i+X_START,j+Y_START,]
+          }
           #print(c('storing',s,count))
         }
       }
       rm(full_array)
+      bg_mat<-bg_mat/count_bg
   
   }
   print("Saving within cluster time series data") 
   save(full_mat,file=paste(outdir,'/time_series/main_data.rdata',sep=''))
   save(meta_mat,file=paste(outdir,'/time_series/meta_data.rdata',sep=''))
+  save(bg_mat,file=paste(outdir,'/time_series/bg_data.rdata',sep=''))
 }else{
   load(file=paste(outdir,'/time_series/main_data.rdata',sep=''))
   load(file=paste(outdir,'/time_series/meta_data.rdata',sep=''))
+  load(file=paste(outdir,'/time_series/bg_data.rdata',sep=''))
 }
 ###########################################
 #delta F
+#clusters
+cl<-length(table(meta_mat[,4]))
+time<-dim(full_mat)[2]
+means<-array(0, c(time,cl))
+for(i in 1:cl){
+  means[,i]<-colMeans(full_mat[meta_mat[,4]==i,])
+  
+}
+
+evens<-as.vector((rep(c(F,T), length.out=time)))
+grand_mean<-mean(full_mat)
+
+if(cl>1){
+  CORR<-cor(means[evens==F,])
+  save(CORR,file=paste(outdir,'/time_series/correlation_data.rdata',sep=''))
+  pdf(paste(outdir,'/Correlation_matrix.pdf',sep=''),paper='a4r')
+  image.plot(1:cl,1:cl,CORR)
+  dev.off()
+}
+means<-cbind(means, t(bg_mat))
+  
+means2<-melt(means[evens==F,])
+names(means2)<-c("Index", "Cluster", "Value")
+means2$F0<-means2$Value/grand_mean
+freq<-5 #5hz
+
+means2$Seconds<-means2$Index/freq
+means2$Cluster<-factor(means2$Cluster)
+levels(means2$Cluster)[length(levels(means2$Cluster))]<-"Background"
+# Plots
+plot<-ggplot(data=means2, aes(y=F0,x=Seconds, colour=Cluster))+geom_line()+theme_bw()
+pdf(paste(outdir,'/Mean_time_series_by_cluster.pdf',sep=''),paper='a4r')
+print(plot)
+dev.off()
+
+plot<-ggplot(data=means2, aes(y=F0,x=Seconds))+geom_line()+theme_bw()+facet_wrap(~Cluster)
+pdf(paste(outdir,'/Mean_time_series_by_cluster.pdf',sep=''),paper='a4r')
+print(plot)
+dev.off()
+
+clust_n<-length(levels(means2$Cluster))
+
+for(i in 1:clust_n){
+  temp<-subset(means2, as.numeric(means2$Cluster)==i)
+  plot<-ggplot(data=temp, aes(y=F0,x=Seconds))+geom_line()+theme_bw()
+  pdf(paste(outdir,'/Mean_time_cluster', levels(means2$Cluster)[i] ,'.pdf',sep=''),paper='a4r')
+  print(plot)
+  dev.off()
+}
+
+
+#whole brain
 
 ###########################################
 #correlation analysis

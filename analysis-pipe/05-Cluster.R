@@ -385,13 +385,15 @@ pdf(paste0(outdir,'/cluster_functions/Frequency_of_clusters.pdf',sep=''),paper='
 plot(table(clustering_cluster),xlab='cluster',ylab='Frequency')
 dev.off()
 
+# Hierachical Clustering ------------------------------
+# # Make a distance metric
+DIST <- as.dist(1-t(CORR))
+HCLUST <- hclust(DIST,method='average')
+
 if(comp>2){
-  # Hierachical Clustering ------------------------------
-  # # Make a distance metric
-  DIST <- as.dist(1-t(CORR))
-  HCLUST <- hclust(DIST,method='average')
   pdf(paste(outdir,'/cluster_functions/Cluster_dendrogram.pdf',sep=''),paper='a4r')
   plot(HCLUST)
   dev.off()
 }
+
 print("05-Cluster.R complete.")
