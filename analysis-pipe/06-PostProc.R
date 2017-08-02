@@ -76,118 +76,125 @@ centers <- clustering
 centers <-sweep(sweep(centers,2,mean_sd_from_unscaled[2,],'*'),2,mean_sd_from_unscaled[1,], '+')
 
 
+###########################################
+if(!file.exists(paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))){
 
-
-
-# ### CLUSTER MERGING
-
-
-file_number <- (file_number.old -1)*Z_SIZE + Z_SIZE
-Basis <- create.bspline.basis(c(0,(max_file-1)*Z_SIZE+Z_SIZE),nbasis=Basis_number)
-BS <- eval.basis(file_number,Basis)
-
-pred_range <- eval.basis(seq(from=1,to=((max_file-1)*Z_SIZE+Z_SIZE),length.out=1000),Basis)
-
-# Each row is a mean time series over the pred_range values
-PRED <- matrix(NA,dim(centers)[1],dim(pred_range)[1])
-for (j in 1:dim(centers)[1]) {
-  PRED[j,] <- apply(pred_range,1,function(x) {sum(x*centers[j,])})
-}
-
-# The time average values of each series
-MEAN_PRED <- rowMeans(PRED)
-
-### Make a set of functions for evaluating splines and convolutions of splines
-Spline_function <- function(x,cc) {sum(eval.basis(x,Basis)*centers[cc,])}
-S1 <- function(x) Spline_function(x,1)
-S2 <- function(x) Spline_function(x,2)
-S_Prod <- function(x) S1(x)*S2(x)
-# INTEGRAL <- integrate(Vectorize(S_Prod),1,(max_file-1)*Z_SIZE+Z_SIZE)$value
-
-### Compute the Covariance of each mean function
-COVAR <- c()
-for (cc in 1:dim(centers)[1]) {
-  S1 <- function(x) Spline_function(x,cc)
-  S2 <- function(x) Spline_function(x,cc)
+  
+  # ### CLUSTER MERGING
+  
+  
+  file_number <- (file_number.old -1)*Z_SIZE + Z_SIZE
+  Basis <- create.bspline.basis(c(0,(max_file-1)*Z_SIZE+Z_SIZE),nbasis=Basis_number)
+  BS <- eval.basis(file_number,Basis)
+  
+  pred_range <- eval.basis(seq(from=1,to=((max_file-1)*Z_SIZE+Z_SIZE),length.out=1000),Basis)
+  
+  # Each row is a mean time series over the pred_range values
+  PRED <- matrix(NA,dim(centers)[1],dim(pred_range)[1])
+  for (j in 1:dim(centers)[1]) {
+    PRED[j,] <- apply(pred_range,1,function(x) {sum(x*centers[j,])})
+  }
+  
+  # The time average values of each series
+  MEAN_PRED <- rowMeans(PRED)
+  
+  ### Make a set of functions for evaluating splines and convolutions of splines
+  Spline_function <- function(x,cc) {sum(eval.basis(x,Basis)*centers[cc,])}
+  S1 <- function(x) Spline_function(x,1)
+  S2 <- function(x) Spline_function(x,2)
   S_Prod <- function(x) S1(x)*S2(x)
-  INTEGRAL <- quadv(S_Prod,1,(max_file-1)*Z_SIZE+Z_SIZE)$Q
-  COVAR[cc] <- INTEGRAL
-}
-
-comp<-dim(centers)[1]
-### Compute the Correlation between pairs of mean functions
-CORR <- matrix(NA,comp,comp)
-for (c1 in 1:comp) {
-  for (c2 in c1:comp) {
-    S1 <- function(x) Spline_function(x,c1)
-    S2 <- function(x) Spline_function(x,c2)
+  # INTEGRAL <- integrate(Vectorize(S_Prod),1,(max_file-1)*Z_SIZE+Z_SIZE)$value
+  
+  ### Compute the Covariance of each mean function
+  COVAR <- c()
+  for (cc in 1:dim(centers)[1]) {
+    S1 <- function(x) Spline_function(x,cc)
+    S2 <- function(x) Spline_function(x,cc)
     S_Prod <- function(x) S1(x)*S2(x)
-    QUAD <- quadv(S_Prod,1,(max_file-1)*Z_SIZE+Z_SIZE)
-    INTEGRAL <- QUAD$Q
-    INT_OLD <- INTEGRAL
-    PREC <- QUAD$estim.prec
-    CORR[c1,c2] <- INTEGRAL/sqrt(COVAR[c1]*COVAR[c2])
-    #what does this do
-    counter_corr = 0
-    while( xor(CORR[c1,c2] > 1, CORR[c1,c2] < -1) & counter_corr < 100 ) {
-      if (CORR[c1,c2] > 1) {INTEGRAL <- INTEGRAL - PREC*INT_OLD}
-      if (CORR[c1,c2] < -1) {INTEGRAL <- INTEGRAL + PREC*INT_OLD}
+    INTEGRAL <- quadv(S_Prod,1,(max_file-1)*Z_SIZE+Z_SIZE)$Q
+    COVAR[cc] <- INTEGRAL
+  }
+  
+  comp<-dim(centers)[1]
+  ### Compute the Correlation between pairs of mean functions
+  CORR <- matrix(NA,comp,comp)
+  for (c1 in 1:comp) {
+    for (c2 in c1:comp) {
+      S1 <- function(x) Spline_function(x,c1)
+      S2 <- function(x) Spline_function(x,c2)
+      S_Prod <- function(x) S1(x)*S2(x)
+      QUAD <- quadv(S_Prod,1,(max_file-1)*Z_SIZE+Z_SIZE)
+      INTEGRAL <- QUAD$Q
+      INT_OLD <- INTEGRAL
+      PREC <- QUAD$estim.prec
       CORR[c1,c2] <- INTEGRAL/sqrt(COVAR[c1]*COVAR[c2])
-      counter_corr=counter_corr+1
+      #what does this do
+      counter_corr = 0
+      while( xor(CORR[c1,c2] > 1, CORR[c1,c2] < -1) & counter_corr < 100 ) {
+        if (CORR[c1,c2] > 1) {INTEGRAL <- INTEGRAL - PREC*INT_OLD}
+        if (CORR[c1,c2] < -1) {INTEGRAL <- INTEGRAL + PREC*INT_OLD}
+        CORR[c1,c2] <- INTEGRAL/sqrt(COVAR[c1]*COVAR[c2])
+        counter_corr=counter_corr+1
+      }
     }
   }
-}
-
-
-  # Hierachical Clustering ------------------------------
-  # # Make a distance metric
-  DIST <- as.dist(1-t(CORR))
-  HCLUST <- hclust(DIST,method='average')
-
-
-print(HCLUST$merge)
-print(HCLUST$height)
-save(HCLUST, file=paste(outdir,'/clusters/tree.rdata',sep=''))
-
-
-merge_list<-array(0, comp-1)
-for (i in 1:(comp-1)){
   
-  if (HCLUST$height[i] < merge_height){
-  print(paste("Merge", i,": "))  
-    if (HCLUST$merge[i,1]<0 & HCLUST$merge[i,2]<0){
-      image_hold[image_hold== -HCLUST$merge[i,2]]<- -HCLUST$merge[i,1]
-      merge_list[i]<- -HCLUST$merge[i,1]
-      print(paste(-HCLUST$merge[i,2], "into",-HCLUST$merge[i,1]))
-    }
-    if (HCLUST$merge[i,1]<0 & HCLUST$merge[i,2]>0){
-      image_hold[image_hold== -HCLUST$merge[i,1]]<- merge_list[HCLUST$merge[i,2]]
-      merge_list[i]<-merge_list[HCLUST$merge[i,2]]
-      print(paste(-HCLUST$merge[i,1],  "into", merge_list[HCLUST$merge[i,2]]))
-    }
+  
+    # Hierachical Clustering ------------------------------
+    # # Make a distance metric
+    DIST <- as.dist(1-t(CORR))
+    HCLUST <- hclust(DIST,method='average')
+  
+  
+  print(HCLUST$merge)
+  print(HCLUST$height)
+  save(HCLUST, file=paste(outdir,'/clusters/tree.rdata',sep=''))
+  
+  
+  merge_list<-array(0, comp-1)
+  for (i in 1:(comp-1)){
     
+    if (HCLUST$height[i] < merge_height){
+    print(paste("Merge", i,": "))  
+      if (HCLUST$merge[i,1]<0 & HCLUST$merge[i,2]<0){
+        image_hold[image_hold== -HCLUST$merge[i,2]]<- -HCLUST$merge[i,1]
+        merge_list[i]<- -HCLUST$merge[i,1]
+        print(paste(-HCLUST$merge[i,2], "into",-HCLUST$merge[i,1]))
+      }
+      if (HCLUST$merge[i,1]<0 & HCLUST$merge[i,2]>0){
+        image_hold[image_hold== -HCLUST$merge[i,1]]<- merge_list[HCLUST$merge[i,2]]
+        merge_list[i]<-merge_list[HCLUST$merge[i,2]]
+        print(paste(-HCLUST$merge[i,1],  "into", merge_list[HCLUST$merge[i,2]]))
+      }
+      
+      
+    }
     
   }
   
+  tab<-table(image_hold)
+  cl<-length(tab)
+  
+  print("Saving merged clusters")  
+  image_hold[is.na(image_hold)]<-0
+  f.write.nifti(image_hold,file=paste0(outdir,'/clusters/clusters_merge_orignal_numbering.nii'), nii=TRUE, L=header)
+  image_hold2<-image_hold
+  
+  for(g in 1:cl){
+    temp_mat<-array(0,dim(image_hold))
+    temp_mat[image_hold==as.numeric(names(tab))[g]]<-1
+    image_hold2[image_hold==as.numeric(names(tab))[g]]<-g
+    f.write.nifti(temp_mat,file=paste0(outdir,'/clusters/cluster_', g ,'mask.nii'), nii=TRUE, L=header )
+  }
+  
+  f.write.nifti(image_hold2,file=paste0(outdir,'/clusters/clusters_merge.nii'), nii=TRUE, L=header)
+  save(image_hold2,file=paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))
+  
+}else{
+  load(file=paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))
+  load(file=paste(outdir,'/clusters/tree.rdata',sep=''))
+  
 }
-
-tab<-table(image_hold)
-cl<-length(tab)
-
-print("Saving merged clusters")  
-image_hold[is.na(image_hold)]<-0
-f.write.nifti(image_hold,file=paste0(outdir,'/clusters/clusters_merge_orignal_numbering.nii'), nii=TRUE, L=header)
-image_hold2<-image_hold
-
-for(g in 1:cl){
-  temp_mat<-array(0,dim(image_hold))
-  temp_mat[image_hold==as.numeric(names(tab))[g]]<-1
-  image_hold2[image_hold==as.numeric(names(tab))[g]]<-g
-  f.write.nifti(temp_mat,file=paste0(outdir,'/clusters/cluster_', g ,'mask.nii'), nii=TRUE, L=header )
-}
-
-f.write.nifti(image_hold2,file=paste0(outdir,'/clusters/clusters_merge.nii'), nii=TRUE, L=header)
-save(image_hold2,file=paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))
 
 ###########################################
 if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
@@ -221,6 +228,7 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
       
       for (j in 1:Y_SIZE) {
         for (i in 1:X_SIZE) {
+          
           if(image_hold2[i,j,s]>0){
             count <- count + 1
             full_mat[count,] <- full_array[i+X_START,j+Y_START,]
@@ -236,6 +244,7 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
           #print(c('storing',s,count))
         }
       }
+      
       rm(full_array)
       bg_mat[1,]<-bg_mat[1,]/count_bg
       bg_mat[2,]<-bg_mat[2,]-(bg_mat[1,]^2)
