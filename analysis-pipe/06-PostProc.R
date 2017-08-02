@@ -227,6 +227,7 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
             #x,y,z, cluster, 
             meta_mat[count,] <- c(i,j,s,image_hold2[i,j,s])
           }
+          
           if(D_Mask[i,j,s]==T){
             count_bg <- count_bg + 1
             bg_mat[1,]<-bg_mat[1,]+full_array[i+X_START,j+Y_START,]
@@ -256,12 +257,13 @@ cl<-length(table(meta_mat[,4]))
 time<-dim(full_mat)[2]
 means<-array(0, c(time,cl))
 sds<-array(0, c(time,cl))
-
+q1<-array(0, c(6, time,cl))
 
 for(i in 1:cl){
   means[,i]<-colMeans(full_mat[meta_mat[,4]==i,])
   sds[,i]<-sqrt(colMeans((full_mat[meta_mat[,4]==i,])^2)-(means[,i])^2)
-
+  q1[,,i]<-t(colQuantiles(full_mat[meta_mat[,4]==i,], probs=c(.25,.75)))
+  
 }
 
 
@@ -310,20 +312,18 @@ for(i in 1:clust_n){
 }
 
 
-# #whole brain
-# temp<-subset(means2, as.numeric(means2$Cluster)==2)
-# temp$min<-temp$Value/grand_mean-1.96*sds[evens==F,2]/grand_mean
-# temp$max<-temp$Value/grand_mean+1.96*sds[evens==F,2]/grand_mean
-# 
-# 
-# temp1<-subset(means2, as.numeric(means2$Cluster)==1)
-# temp1$min<-temp1$Value/grand_mean-1.96*sds[evens==F,1]/grand_mean
-# temp1$max<-temp1$Value/grand_mean+1.96*sds[evens==F,1]/grand_mean
-# 
-# 
-# temp<-rbind(temp, temp1)
-# 
-# ggplot(data=temp, aes(y=F0,x=Seconds, colour=Cluster))+geom_line()+theme_bw()+geom_ribbon(aes(ymin=min, ymax=max, fill=Cluster), alpha=0.3)
+for(i in 1:clust_n){
+  # #whole brain
+  temp<-subset(means2, as.numeric(means2$Cluster)==i)
+  temp$min<-q1[1,evens==F,i]/grand_mean
+  temp$max<-q1[2,evens==F,i]/grand_mean
+  
+  # 
+   plot<-ggplot(data=temp, aes(y=F0,x=Seconds))+geom_line()+theme_bw()+geom_ribbon(aes(ymin=min, ymax=max), alpha=0.3)+ggtitle(paste0("Cluster ", levels(means2$Cluster)[i]), "\n with centre 50% empirical distribution")
+   pdf(paste(outdir,'/Mean_time_cluster', levels(means2$Cluster)[i] ,'_with_interval.pdf',sep=''),paper='a4r')
+   print(plot)
+   dev.off()
+}
 ###########################################
 #correlation analysis
 
