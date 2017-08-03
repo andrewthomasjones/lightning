@@ -1,6 +1,6 @@
-list.of.packages <- c('lattice', 'AnalyzeFMRI', 'ggplot2', 'reshape2', 'MASS', 'abind', 'fda', 'fields', 'speedglm','pracma', 'tclust', 'signal', 'capushe', 'pryr', 'lowmemtkmeans')
+list.of.packages <- c('matrixStats', 'lattice', 'AnalyzeFMRI', 'ggplot2', 'reshape2', 'MASS', 'abind', 'fda', 'fields', 'speedglm','pracma', 'tclust', 'signal', 'capushe', 'pryr', 'lowmemtkmeans')
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
+if(length(new.packages)) install.packages(new.packages, repos="https://cloud.r-project.org")
 
 ### Load necessary libraries (all CRAN libraries can be acquired using install.packages)
 #library(compiler)
@@ -19,7 +19,7 @@ library(signal)
 library(capushe)
 library(pryr)
 library(lowmemtkmeans)
-
+library(matrixStats)
 ### Parse CMD Line Arguments
 args <- commandArgs(trailingOnly = TRUE)
 indir_new <- args[1] # $input = "04-Splines"; 
@@ -238,8 +238,10 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
           
           if(D_Mask[i,j,s]==T){
             count_bg <- count_bg + 1
-            bg_mat[1,]<-bg_mat[1,]+full_array[i+X_START,j+Y_START,]
-            bg_mat[2,]<-bg_mat[2,]+(full_array[i+X_START,j+Y_START,])^2
+            temp1<-full_array[i+X_START,j+Y_START,]
+            temp1[is.nan(temp1)]<-0
+            bg_mat[1,]<-bg_mat[1,]+temp1
+            bg_mat[2,]<-bg_mat[2,]+(temp1)^2
           }
           #print(c('storing',s,count))
         }
@@ -259,6 +261,8 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
   load(file=paste(outdir,'/time_series/meta_data.rdata',sep=''))
   load(file=paste(outdir,'/time_series/bg_data.rdata',sep=''))
 }
+
+
 ###########################################
 #delta F
 #clusters
@@ -286,7 +290,9 @@ if(cl>1){
   image.plot(1:cl,1:cl,CORR)
   dev.off()
 }
-means<-cbind(means, t(bg_mat[1,]))
+
+    
+means<-cbind(means, (bg_mat[1,]))
   
 means2<-melt(means[evens==F,])
 names(means2)<-c("Index", "Cluster", "Value")
@@ -324,9 +330,13 @@ for(i in 1:clust_n){
 for(i in 1:clust_n){
   # #whole brain
   temp<-subset(means2, as.numeric(means2$Cluster)==i)
-  temp$min<-q1[1,evens==F,i]/grand_mean
-  temp$max<-q1[2,evens==F,i]/grand_mean
-  
+  if(i !=clust_n){
+    temp$min<-q1[1,evens==F,i]/grand_mean
+    temp$max<-q1[2,evens==F,i]/grand_mean
+  }else{
+    temp$min<-temp$F0-1.96*sqrt(bg_mat[2,evens==F])/grand_mean
+    temp$max<-temp$F0+1.96*sqrt(bg_mat[2,evens==F])/grand_mean
+  }
   # 
    plot<-ggplot(data=temp, aes(y=F0,x=Seconds))+geom_line()+theme_bw()+geom_ribbon(aes(ymin=min, ymax=max), alpha=0.3)+ggtitle(paste0("Cluster ", levels(means2$Cluster)[i]), "\n with centre 50% empirical distribution")
    pdf(paste(outdir,'/Mean_time_cluster', levels(means2$Cluster)[i] ,'_with_interval.pdf',sep=''),paper='a4r')
