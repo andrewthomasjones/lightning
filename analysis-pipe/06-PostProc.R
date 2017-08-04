@@ -183,7 +183,7 @@ if(!file.exists(paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))){
   for(g in 1:cl){
     temp_mat<-array(0,dim(image_hold))
     temp_mat[image_hold==as.numeric(names(tab))[g]]<-1
-    image_hold2[image_hold==as.numeric(names(tab))[g]]<-g
+    image_hold2[image_hold==as.numeric(names(tab))[g]]<-g-1
     f.write.nifti(temp_mat,file=paste0(outdir,'/clusters/cluster_', g ,'mask.nii'), nii=TRUE, L=header )
   }
   
@@ -203,12 +203,14 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
   ### Store data into matrix instead of array
   count <- 0
   count_bg <- 0
+  print(paste(active_vox, N))
+  print(paste("Trying to allocate matrix of size (approx)", round(active_vox*(N+4)*8/(1024^3),2), " GB..."))
   full_mat <- matrix(NA,active_vox,N)
   bg_mat <- matrix(0,2,N)
   meta_mat <- matrix(NA,active_vox,4)
   
   
-
+  
   for (s in 1:Z_SIZE) {
     print(paste("Loading slice",s,"of", Z_SIZE)) 
     file_number <- (file_number.old-1)*Z_SIZE +s+Z_START
