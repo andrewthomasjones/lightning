@@ -207,9 +207,11 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
   bg_mat <- matrix(0,2,N)
   meta_mat <- matrix(NA,active_vox,4)
   
+  
+
   for (s in 1:Z_SIZE) {
     print(paste("Loading slice",s,"of", Z_SIZE)) 
-      file_number <- (file_number.old-1)*Z_SIZE +s
+    file_number <- (file_number.old-1)*Z_SIZE +s+Z_START
       
       full_array <- list()
       
@@ -217,7 +219,7 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
       for (j in 1:N) {
         file_name <- substring(file_list[j],1,12)
         nii_name <- paste(indir3, '/', file_name,'.nii',sep='')
-        print(c('reading',nii_name, s+Z_START,j,round(j/N),1))
+        #print(c('reading',nii_name, s+Z_START,j,round(j/N),1))
         NIFTI <- f.read.nifti.slice(nii_name,s+Z_START,1)
         full_array[[j]] <- NIFTI
       }
@@ -225,7 +227,7 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
       ### Combine all of the time slices
       full_array <- abind(full_array,along=3)
       
-      
+      s<-s+Z_START
       for (j in 1:Y_SIZE) {
         for (i in 1:X_SIZE) {
           
@@ -240,6 +242,7 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
             count_bg <- count_bg + 1
             temp1<-full_array[i+X_START,j+Y_START,]
             temp1[is.nan(temp1)]<-0
+            
             bg_mat[1,]<-bg_mat[1,]+temp1
             bg_mat[2,]<-bg_mat[2,]+(temp1)^2
           }
@@ -248,9 +251,15 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
       }
       
       rm(full_array)
-      bg_mat[1,]<-bg_mat[1,]/count_bg
-      bg_mat[2,]<-bg_mat[2,]-(bg_mat[1,]^2)
+
   }
+  
+  print(paste(count_bg,  all(!is.na(bg_mat[1,]))))
+  print(head(bg_mat[1,]))
+  bg_mat[1,]<-bg_mat[1,]/count_bg
+  bg_mat[2,]<-bg_mat[2,]-(bg_mat[1,]^2)
+  print(head(bg_mat[1,]))
+  
   
   print("Saving within cluster time series data") 
   save(full_mat,file=paste(outdir,'/time_series/main_data.rdata',sep=''))
@@ -270,7 +279,7 @@ cl<-length(table(meta_mat[,4]))
 time<-dim(full_mat)[2]
 means<-array(0, c(time,cl))
 sds<-array(0, c(time,cl))
-q1<-array(0, c(6, time,cl))
+q1<-array(0, c(2, time,cl))
 
 for(i in 1:cl){
   means[,i]<-colMeans(full_mat[meta_mat[,4]==i,])
