@@ -198,20 +198,25 @@ if(!file.exists(paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))){
 
 ###########################################
 if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
-  print("Reloading raw time series data") 
-  active_vox<-sum(image_hold2>0)
-  ### Store data into matrix instead of array
-  count <- 0
-  count_bg <- 0
-  print(paste(active_vox, N))
-  print(paste("Trying to allocate matrix of size (approx)", round(active_vox*(N+4)*8/(1024^3),2), " GB..."))
-  full_mat <- matrix(NA,active_vox,N)
-  bg_mat <- matrix(0,2,N)
-  meta_mat <- matrix(NA,active_vox,4)
+  if(!file.exists(paste(outdir,'/time_series/temp_data.rdata',sep=''))){
+    print("Reloading raw time series data") 
+    active_vox<-sum(image_hold2>0)
+    ### Store data into matrix instead of array
+    count <- 0
+    count_bg <- 0
+    print(paste(active_vox, N))
+    print(paste("Trying to allocate matrix of size (approx)", round(active_vox*(N+4)*8/(1024^3),2), " GB..."))
+    full_mat <- matrix(NA,active_vox,N)
+    bg_mat <- matrix(0,2,N)
+    meta_mat <- matrix(NA,active_vox,4)
+    k=1
+    
+  }else{
+    print("Reloading raw time series data") 
+    load(paste(outdir,'/time_series/temp_data.rdata',sep=''))
+  }
   
-  
-  
-  for (s in 1:Z_SIZE) {
+  for (s in k:Z_SIZE) {
     print(paste("Loading slice",s,"of", Z_SIZE)) 
     file_number <- (file_number.old-1)*Z_SIZE +s+Z_START
       
@@ -253,13 +258,15 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
       }
       
       rm(full_array)
-
+      k<-s+1
+      save(active_vox, count, count_bg, full_mat, bg_mat, meta_mat, k, file= paste(outdir,'/time_series/temp_data.rdata',sep=''))
   }
   
   print(paste(count_bg,  all(!is.na(bg_mat[1,]))))
   print(head(bg_mat[1,]))
+  bg_mat[2,]<-(bg_mat[2,]-(bg_mat[1,]^2))/count_bg
   bg_mat[1,]<-bg_mat[1,]/count_bg
-  bg_mat[2,]<-bg_mat[2,]-(bg_mat[1,]^2)
+  
   print(head(bg_mat[1,]))
   
   
@@ -341,18 +348,24 @@ for(i in 1:clust_n){
 for(i in 1:clust_n){
   # #whole brain
   temp<-subset(means2, as.numeric(means2$Cluster)==i)
+  
   if(i !=clust_n){
     temp$min<-q1[1,evens==F,i]/grand_mean
     temp$max<-q1[2,evens==F,i]/grand_mean
+    plot<-ggplot(data=temp, aes(y=F0,x=Seconds))+geom_line()+theme_bw()+geom_ribbon(aes(ymin=min, ymax=max), alpha=0.3)+ggtitle(paste0("Cluster ", levels(means2$Cluster)[i]), "\n with centre 50% empirical distribution")
+    pdf(paste(outdir,'/Mean_time_cluster', levels(means2$Cluster)[i] ,'_with_interval.pdf',sep=''),paper='a4r')
+    print(plot)
+    dev.off()
   }else{
-    temp$min<-temp$F0-1.96*sqrt(bg_mat[2,evens==F])/grand_mean
-    temp$max<-temp$F0+1.96*sqrt(bg_mat[2,evens==F])/grand_mean
+    temp$min<-temp$F0-.77*sqrt(bg_mat[2,evens==F])/grand_mean
+    temp$max<-temp$F0+.77*sqrt(bg_mat[2,evens==F])/grand_mean
+    plot<-ggplot(data=temp, aes(y=F0,x=Seconds))+geom_line()+theme_bw()+geom_ribbon(aes(ymin=min, ymax=max), alpha=0.3)+ggtitle(paste0("Cluster ", levels(means2$Cluster)[i]), "\n with centre 50% normal CI")
+    pdf(paste(outdir,'/Mean_time_cluster', levels(means2$Cluster)[i] ,'_with_interval.pdf',sep=''),paper='a4r')
+    print(plot)
+    dev.off()
   }
   # 
-   plot<-ggplot(data=temp, aes(y=F0,x=Seconds))+geom_line()+theme_bw()+geom_ribbon(aes(ymin=min, ymax=max), alpha=0.3)+ggtitle(paste0("Cluster ", levels(means2$Cluster)[i]), "\n with centre 50% empirical distribution")
-   pdf(paste(outdir,'/Mean_time_cluster', levels(means2$Cluster)[i] ,'_with_interval.pdf',sep=''),paper='a4r')
-   print(plot)
-   dev.off()
+
 }
 ###########################################
 #correlation analysis
