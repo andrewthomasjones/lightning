@@ -166,6 +166,11 @@ if(!file.exists(paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))){
         merge_list[i]<-merge_list[HCLUST$merge[i,2]]
         print(paste(-HCLUST$merge[i,1],  "into", merge_list[HCLUST$merge[i,2]]))
       }
+      if (HCLUST$merge[i,1]>0 & HCLUST$merge[i,2]>0){
+        image_hold[image_hold== merge_list[HCLUST$merge[i,1]]]<- merge_list[HCLUST$merge[i,2]]
+        merge_list[i]<-merge_list[HCLUST$merge[i,2]]
+        print(paste(merge_list[HCLUST$merge[i,1]],  "into", merge_list[HCLUST$merge[i,2]])) 
+      }
       
       
     }
@@ -175,25 +180,38 @@ if(!file.exists(paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))){
   tab<-table(image_hold)
   cl<-length(tab)
   
+  
+  
   print("Saving merged clusters")  
   image_hold[is.na(image_hold)]<-0
   f.write.nifti(image_hold,file=paste0(outdir,'/clusters/clusters_merge_orignal_numbering.nii'), nii=TRUE, L=header)
   
-  for(g in 2:cl){ #need to skip background
-    temp_mat<-array(0,dim(image_hold))
-    temp_mat[image_hold==as.numeric(names(tab))[g]]<-1
-    f.write.nifti(temp_mat,file=paste0(outdir,'/clusters/cluster_', g-1 ,'mask.nii'), nii=TRUE, L=header )
-  }
-  
   image_hold2<-image_hold
-  tab<-table(image_hold2)
-  cl<-length(tab)
+  print(cl)
   
   for(g in 1:cl){
-    image_hold2[image_hold2==as.numeric(names(tab))[g]]<-(g-1)
+    image_hold2[image_hold2==as.numeric(names(tab))[g]]<-(g)
   }
   
+  tab<-table(image_hold2)
+  cl<-length(tab)
+  print(tab)
+  
+  for(g in 1:cl){ #need to skip background
+    temp_mat<-array(0,dim(image_hold2))
+    temp_mat[image_hold2==as.numeric(names(tab))[g]]<-1
+    if((g-1)>0){
+      f.write.nifti(temp_mat,file=paste0(outdir,'/clusters/cluster_', g-1 ,'mask.nii'), nii=TRUE, L=header )
+    }
+  }
+  
+  
+
+  
   f.write.nifti(image_hold2,file=paste0(outdir,'/clusters/clusters_merge.nii'), nii=TRUE, L=header)
+  tab<-table(image_hold2)
+  cl<-length(tab)
+  print(tab)
   save(image_hold2,file=paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))
   
 }else{
@@ -206,6 +224,9 @@ if(!file.exists(paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))){
 if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
   if(!file.exists(paste(outdir,'/time_series/temp_data.rdata',sep=''))){
     print("Reloading raw time series data") 
+    tab<-table(image_hold2)
+    cl<-length(tab)
+    print(tab)
     active_vox<-sum(image_hold2>0)
     ### Store data into matrix instead of array
     count <- 0
@@ -301,13 +322,16 @@ means<-array(0, c(time,cl))
 sds<-array(0, c(time,cl))
 q1<-array(0, c(2, time,cl))
 
+
 for(i in 1:cl){
+  
   means[,i]<-colMeans(full_mat[meta_mat[,4]==i,])
+  
   sds[,i]<-sqrt(colMeans((full_mat[meta_mat[,4]==i,])^2)-(means[,i])^2)
+  
   q1[,,i]<-t(colQuantiles(full_mat[meta_mat[,4]==i,], probs=c(.25,.75)))
   
 }
-
 
 evens<-as.vector((rep(c(F,T), length.out=time)))
 grand_mean<-mean(full_mat)
