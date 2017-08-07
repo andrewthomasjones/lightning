@@ -217,6 +217,11 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
   }
   
   for (s in k:Z_SIZE) {
+    
+    sink(file=paste(outdir,'/time_series/prog.txt',sep=''))
+    cat(s)
+    cat("\n")
+    sink()
     print(paste("Loading slice",s,"of", Z_SIZE)) 
     file_number <- (file_number.old-1)*Z_SIZE +s+Z_START
       
