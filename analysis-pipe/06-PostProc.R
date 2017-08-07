@@ -178,13 +178,19 @@ if(!file.exists(paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))){
   print("Saving merged clusters")  
   image_hold[is.na(image_hold)]<-0
   f.write.nifti(image_hold,file=paste0(outdir,'/clusters/clusters_merge_orignal_numbering.nii'), nii=TRUE, L=header)
-  image_hold2<-image_hold
   
-  for(g in 1:cl){
+  for(g in 2:cl){ #need to skip background
     temp_mat<-array(0,dim(image_hold))
     temp_mat[image_hold==as.numeric(names(tab))[g]]<-1
-    image_hold2[image_hold==as.numeric(names(tab))[g]]<-g-1
-    f.write.nifti(temp_mat,file=paste0(outdir,'/clusters/cluster_', g ,'mask.nii'), nii=TRUE, L=header )
+    f.write.nifti(temp_mat,file=paste0(outdir,'/clusters/cluster_', g-1 ,'mask.nii'), nii=TRUE, L=header )
+  }
+  
+  image_hold2<-image_hold
+  tab<-table(image_hold2)
+  cl<-length(tab)
+  
+  for(g in 1:cl){
+    image_hold2[image_hold2==as.numeric(names(tab))[g]]<-(g-1)
   }
   
   f.write.nifti(image_hold2,file=paste0(outdir,'/clusters/clusters_merge.nii'), nii=TRUE, L=header)
