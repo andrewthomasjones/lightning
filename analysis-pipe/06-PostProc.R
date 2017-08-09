@@ -205,7 +205,10 @@ if(!file.exists(paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))){
     }
   }
   
-  
+  # Plot Frequency Histogram
+  pdf(paste0(outdir,'/cluster_functions/Frequency_of_clusters.pdf',sep=''),paper='a4r')
+  plot(table(image_hold2),xlab='cluster',ylab='Frequency')
+  dev.off()
 
   
   f.write.nifti(image_hold2,file=paste0(outdir,'/clusters/clusters_merge.nii'), nii=TRUE, L=header)
