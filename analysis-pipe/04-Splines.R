@@ -120,8 +120,13 @@ if(!file.exists(file=paste(outdir,'/D_Mask.rdata',sep=''))){
 no_cores <- detectCores() - 1
 
 # Initiate cluster
-cl <- makeCluster(no_cores)
+#cl <- makeCluster(no_cores)
+print(no_cores)
 
+### Get already existing outputs
+Completed_output <- list.files(path=paste0(outdir, '/coeff_mats/'), pattern='coeff_mat', full.names=FALSE)
+Completed_numbers<-(as.numeric(unlist(strsplit(unlist(Completed_output), "[^0-9]+")))
+print(Completed_numbers)
 
 ### Fit Splines to the time series in each of the slice files (s loops over slices)
 for (s in 1:Z_SIZE) {
