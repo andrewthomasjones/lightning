@@ -368,6 +368,42 @@ if(!file.exists(file=paste(outdir,'/MASK_active.rdata',sep=''))){
   f.write.nifti(mips_detrend,file=paste0(outdir,'/time_mips_detrended.nii'), nii=TRUE,L=header )
   f.write.nifti(mips_filt,file=paste0(outdir,'/time_mips_filter_detrended.nii'), nii=TRUE,L=header )
   save(active_mask, file=paste(outdir,'/MASK_active.rdata',sep=''))
+  
+}else{
+  load(file=paste(outdir,'/MASK_active.rdata',sep=''))
+  active_mask_big<-active_mask
+  mips <- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
+  mips_detrend<- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
+  mips_filt<- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
+  active<- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
+  
+  for (s in 1:Z_SIZE) {
+    
+    load(file=paste(outdir,'/mips/snap_mips_',s,'.rdata',sep=''))
+    load(file=paste(outdir,'/mips/snap_mips_detrend_',s,'.rdata',sep=''))
+    load(file=paste(outdir,'/mips/snap_mips_filt_',s,'.rdata',sep=''))
+    
+    if(!all(is.na(active_mask_big[,,s]))){
+      active[,,s]<-active_mask_big[,,s]
+    }else{
+      load(file=paste(outdir,'/mips/MASK_active_', s, '.rdata',sep=''))
+      active[,,s]<-active_mask
+    }
+    mips[,,s] <- snap_mips
+    mips_detrend[,,s] <- snap_mips_detrend
+    mips_filt[,,s] <- snap_mips_detrend
+  }
+  mips[is.na(mips)]<-0
+  mips_detrend[is.na(mips_detrend)]<-0
+  active[is.na(active)]<-0
+  active_mask<-active
+  f.write.nifti(active,file=paste0(outdir,'/MASK_active.nii'), nii=TRUE, L=header)
+  f.write.nifti(mips,file=paste0(outdir,'/time_mips.nii'), nii=TRUE, L=header)
+  f.write.nifti(mips_detrend,file=paste0(outdir,'/time_mips_detrended.nii'), nii=TRUE,L=header )
+  f.write.nifti(mips_filt,file=paste0(outdir,'/time_mips_filter_detrended.nii'), nii=TRUE,L=header )
+  save(active_mask, file=paste(outdir,'/MASK_active.rdata',sep=''))
+  
+  
 }
 
 print("04-Rstats02.R complete.")
