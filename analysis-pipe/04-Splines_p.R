@@ -344,7 +344,7 @@ load(file=paste(outdir,'/ssDM.rdata',sep=''))
 load(file=paste(outdir,'/D_Mask.rdata',sep=''))
 
 #save mips when finish all slices
-if(!file.exists(file=paste0(outdir,'/mips/time_mips.nii'))){
+if(!file.exists(file=paste(outdir,'/MASK_active.rdata',sep=''))){
   mips <- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
   mips_detrend<- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
   mips_filt<- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
@@ -362,10 +362,12 @@ if(!file.exists(file=paste0(outdir,'/mips/time_mips.nii'))){
   mips[is.na(mips)]<-0
   mips_detrend[is.na(mips_detrend)]<-0
   active[is.na(active)]<-0
+  active_mask<-active
   f.write.nifti(active,file=paste0(outdir,'/MASK_active.nii'), nii=TRUE, L=header)
   f.write.nifti(mips,file=paste0(outdir,'/time_mips.nii'), nii=TRUE, L=header)
   f.write.nifti(mips_detrend,file=paste0(outdir,'/time_mips_detrended.nii'), nii=TRUE,L=header )
   f.write.nifti(mips_filt,file=paste0(outdir,'/time_mips_filter_detrended.nii'), nii=TRUE,L=header )
+  save(active_mask, file=paste(outdir,'/MASK_active.rdata',sep=''))
 }
 
 print("04-Rstats02.R complete.")
