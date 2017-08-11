@@ -206,7 +206,7 @@ if(!file.exists(paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))){
   }
   
   # Plot Frequency Histogram
-  pdf(paste0(outdir,'/cluster_functions/Frequency_of_clusters.pdf',sep=''),paper='a4r')
+  pdf(paste0(outdir,'/clusters/Frequency_of_clusters.pdf',sep=''),paper='a4r')
   plot(table(image_hold2),xlab='cluster',ylab='Frequency')
   dev.off()
 
@@ -243,6 +243,7 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
     
   }else{
     print("Reloading raw time series data") 
+    print(paste(outdir,'/time_series/temp_data.rdata',sep='')) 
     load(paste(outdir,'/time_series/temp_data.rdata',sep=''))
   }
   
@@ -295,6 +296,7 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
       rm(full_array)
       k<-s+1
       save(active_vox, count, count_bg, full_mat, bg_mat, meta_mat, k, file= paste(outdir,'/time_series/temp_data.rdata',sep=''))
+  
   }
   
   print(paste(count_bg,  all(!is.na(bg_mat[1,]))))
