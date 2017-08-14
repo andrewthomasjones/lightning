@@ -255,7 +255,7 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
     sink()
     print(paste("Loading slice",s,"of", Z_SIZE)) 
     file_number <- (file_number.old-1)*Z_SIZE +s+Z_START
-      
+    print(mem_used())  
       full_array <- list()
       
       ### Read in Z slices
