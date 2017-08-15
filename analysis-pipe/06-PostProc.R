@@ -207,7 +207,7 @@ if(!file.exists(paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))){
   
   # Plot Frequency Histogram
   pdf(paste0(outdir,'/clusters/Frequency_of_clusters.pdf',sep=''),paper='a4r')
-  plot(table(image_hold2),xlab='cluster',ylab='Frequency')
+  plot(table(image_hold2)[-1],xlab='cluster',ylab='Frequency')
   dev.off()
 
   
