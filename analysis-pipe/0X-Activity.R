@@ -141,10 +141,10 @@ print(no_cores)
                       load(file=paste(outdir,'/MASK_active.rdata',sep=''))
                     }
                     
-                    s<-k
+                    
                     
                     ### Fit Splines to the time series in each of the slice files (s loops over slices)
-                    for (s in 1:Z_SIZE) {
+                    for (s in k:Z_SIZE) {
                       
                       print(mem_used())
                       rm(list = ls()[-c(which(ls()=="outdir"), which(ls()=="s"))])
@@ -245,7 +245,7 @@ print(no_cores)
                         print("saving")
                         print(mem_used())
                         k<-s+1
-                        save(active_mask1,active_mask2,active_mask3,active_mask4,k, file=paste(outdir,'/MASK_active.rdata',sep=''))
+                        save(active_mask1,active_mask2,active_mask3,active_mask4, k, file=paste(outdir,'/MASK_active.rdata',sep=''))
                         
                         
                       }
