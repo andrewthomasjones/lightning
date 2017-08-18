@@ -135,6 +135,7 @@ print(no_cores)
                       active_mask3 <- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
                       active_mask4 <- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
                       k<-1
+                      save(active_mask1,active_mask2,active_mask3,active_mask4,k, file=paste(outdir,'/MASK_active.rdata',sep=''))
                     }else{
                       load(file=paste(outdir,'/MASK_active.rdata',sep=''))
                     }
@@ -168,7 +169,9 @@ print(no_cores)
                           file_name <- substring(file_list[j],1,12)
                           nii_name <- paste(indir, '/', file_name,'.nii',sep='')
                           #print(c('reading',nii_name, s+Z_START,j,round(j/N),1))
-                          print(paste("Reading Slice", s+Z_START, round(100*(j/N),1), '% Complete'))
+                          if(j %% 25 == 0){
+                            print(paste("Reading Slice", s+Z_START, round(100*(j/N),1), '% Complete'))
+                          }
                           NIFTI <- f.read.nifti.slice(nii_name,s+Z_START,1)
                           full_array[[j]] <- NIFTI
                         }
@@ -177,7 +180,7 @@ print(no_cores)
                         ### Combine all of the time slices
                         full_array <- abind(full_array,along=3)
                         
-                        
+                        print('storing')
                         ### Store data into matrix instead of array
                         count <- 0
                         full_mat <- matrix(NA,prod(Y_SIZE*X_SIZE),N)
@@ -237,7 +240,7 @@ print(no_cores)
                             active_mask4[i,j,s] <-  var(mat_odds_filt[count,],na.rm=T)
                           }
                         }
-                        
+                        print("saving")
                         print(mem_used())
                         k<-s+1
                         save(active_mask1,active_mask2,active_mask3,active_mask4,k, file=paste(outdir,'/MASK_active.rdata',sep=''))
