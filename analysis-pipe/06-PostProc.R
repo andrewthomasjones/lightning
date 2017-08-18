@@ -304,7 +304,7 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
       
       rm(full_array)
       k<-s+1
-      save(active_vox, count, count_bg, cluster_mat, cluster_count, bg_mat, meta_mat, k, file= paste(outdir,'/time_series/temp_data.rdata',sep=''))
+      save(active_vox, count, count_bg, cluster_mat, cluster_counts, bg_mat, meta_mat, k, file= paste(outdir,'/time_series/temp_data.rdata',sep=''))
   
   }
   
