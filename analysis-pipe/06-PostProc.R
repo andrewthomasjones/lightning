@@ -236,9 +236,12 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
     count_bg <- 0
     print(paste(active_vox, N))
     print(paste("Trying to allocate matrix of size (approx)", round(active_vox*(N+4)*8/(1024^3),2), " GB..."))
-    full_mat <- matrix(NA,active_vox,N)
+    #full_mat <- matrix(NA,active_vox,N)
     bg_mat <- matrix(0,2,N)
     meta_mat <- matrix(NA,active_vox,4)
+    
+    cluster_mat <- matrix(0,cl,N)
+    cluster_counts <- matrix(0,cl,1)
     k=1
     
   }else{
@@ -274,20 +277,26 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
       for (j in 1:Y_SIZE) {
         for (i in 1:X_SIZE) {
           
-          if(image_hold2[i,j,s]>0){
-            count <- count + 1
-            full_mat[count,] <- full_array[i+X_START,j+Y_START,]
-            #x,y,z, cluster, 
-            meta_mat[count,] <- c(i,j,s,image_hold2[i,j,s])
-          }
-          
           if(D_Mask[i,j,s]==T){
+            
+            if(image_hold2[i,j,s]>0){
+              cluster_counts[image_hold2[i,j,s]]<-cluster_counts[image_hold2[i,j,s]]+1
+              count <- count + 1
+              #full_mat[count,] <- full_array[i+X_START,j+Y_START,]
+              temp2<-full_array[i+X_START,j+Y_START,]
+              temp2[is.nan(temp2)]<-0
+              cluster_mat[image_hold2[i,j,s],]<-cluster_mat[image_hold2[i,j,s],]+temp2
+              #x,y,z, cluster, 
+              meta_mat[count,] <- c(i,j,s,image_hold2[i,j,s])
+            }
+            
             count_bg <- count_bg + 1
             temp1<-full_array[i+X_START,j+Y_START,]
-            temp1[is.nan(temp1)]<-0
-            
+            temp1[is.nan(temp2)]<-0
             bg_mat[1,]<-bg_mat[1,]+temp1
-            bg_mat[2,]<-bg_mat[2,]+(temp1)^2
+          
+
+            #bg_mat[2,]<-bg_mat[2,]+(temp1)^2
           }
           #print(c('storing',s,count))
         }
@@ -295,20 +304,16 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
       
       rm(full_array)
       k<-s+1
-      save(active_vox, count, count_bg, full_mat, bg_mat, meta_mat, k, file= paste(outdir,'/time_series/temp_data.rdata',sep=''))
+      save(active_vox, count, count_bg, cluster_mat, cluster_count, bg_mat, meta_mat, k, file= paste(outdir,'/time_series/temp_data.rdata',sep=''))
   
   }
   
-  print(paste(count_bg,  all(!is.na(bg_mat[1,]))))
-  print(head(bg_mat[1,]))
-  bg_mat[2,]<-(bg_mat[2,]-(bg_mat[1,]^2))/count_bg
+
   bg_mat[1,]<-bg_mat[1,]/count_bg
-  
-  print(head(bg_mat[1,]))
-  
+  cluster_mat<-cluster_mat/cluster_counts
   
   print("Saving within cluster time series data") 
-  save(full_mat,file=paste(outdir,'/time_series/main_data.rdata',sep=''))
+  save(cluster_mat,file=paste(outdir,'/time_series/main_data.rdata',sep=''))
   save(meta_mat,file=paste(outdir,'/time_series/meta_data.rdata',sep=''))
   save(bg_mat,file=paste(outdir,'/time_series/bg_data.rdata',sep=''))
 }else{
@@ -354,10 +359,10 @@ means<-cbind(means, (bg_mat[1,]))
   
 means2<-melt(means[evens==F,])
 names(means2)<-c("Index", "Cluster", "Value")
-means2$F0<-means2$Value/grand_mean
+means2$F0<-mean(bg_mat[1,])#means2$Value/grand_mean
 freq<-5 #5hz
 
-means2$Seconds<-means2$Index/freq
+means2$Seconds<-2*means2$Index/freq
 means2$Cluster<-factor(means2$Cluster)
 levels(means2$Cluster)[length(levels(means2$Cluster))]<-"Background"
 # Plots
