@@ -130,6 +130,7 @@ print(no_cores)
                     
                     
                     if(!file.exists(paste(outdir,'/MASK_active.rdata',sep=''))){
+                      print("Creating mask files")
                       active_mask1 <- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
                       active_mask2 <- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
                       active_mask3 <- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
@@ -152,6 +153,7 @@ print(no_cores)
                       load(file=paste(outdir,'/settings.rdata',sep=''))
                       load(file=paste(outdir,'/ssDM.rdata',sep=''))
                       load(file=paste(outdir,'/D_Mask.rdata',sep=''))
+                      load(file=paste(outdir,'/MASK_active.rdata',sep=''))
                       print(mem_used())
                       print(c('Doing ', s))
                       
