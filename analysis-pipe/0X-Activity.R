@@ -1,4 +1,4 @@
-list.of.packages <- c('parallel', 'lattice', 'AnalyzeFMRI', 'ggplot2', 'reshape2', 'MASS', 'abind', 'fda', 'fields', 'speedglm','pracma', 'tclust', 'signal', 'capushe', 'pryr', 'lowmemtkmeans')
+list.of.packages <- c('parallel', 'lattice', 'AnalyzeFMRI', 'ggplot2', 'reshape2', 'MASS', 'abind', 'fda', 'fields', 'speedglm','pracma', 'tclust', 'signal', 'capushe', 'pryr', 'lowmemtkmeans', 'matrixStats')
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -19,7 +19,7 @@ library(capushe)
 library(pryr)
 library(lowmemtkmeans)
 library(parallel)
-
+library(matrixStats)
 
 
 
@@ -231,15 +231,15 @@ print(no_cores)
                         
                         count<-0
                         
-                      
+                        #temp1<- quantile(mat_odds[count,], probs = seq(0.025, 0.975),na.rm=T)
+                        temp1<- rowQuantiles(mat_odds,  prprobs = seq(0.025, 0.975),na.rm=T)
                         print(paste("Looking at activity levels in layer ", s))
                         for (j in 1:Y_SIZE) {
                           for (i in 1:X_SIZE) {
                             count <- count + 1
                             active_mask1[i,j,s] <-  (max(mat_odds_filt[count,],na.rm=T) - min(mat_odds_filt[count,],na.rm=T))
                             active_mask2[i,j,s] <-  (max(mat_odds[count,],na.rm=T) - min(mat_odds[count,],na.rm=T))
-                            temp1<- quantile(mat_odds[count,], probs = seq(0.025, 0.975),na.rm=T)
-                            active_mask3[i,j,s] <-  temp1[2]-temp1[1]
+                            active_mask3[i,j,s] <-  temp1[i,2]-temp1[i,1]
                             active_mask4[i,j,s] <-  var(mat_odds_filt[count,],na.rm=T)
                           }
                         }
