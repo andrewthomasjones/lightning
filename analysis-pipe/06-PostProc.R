@@ -292,7 +292,7 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
             
             count_bg <- count_bg + 1
             temp1<-full_array[i+X_START,j+Y_START,]
-            temp1[is.nan(temp2)]<-0
+            temp1[is.nan(temp1)]<-0
             bg_mat[1,]<-bg_mat[1,]+temp1
           
 

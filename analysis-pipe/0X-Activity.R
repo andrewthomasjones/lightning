@@ -232,7 +232,7 @@ print(no_cores)
                         count<-0
                         
                         #temp1<- quantile(mat_odds[count,], probs = seq(0.025, 0.975),na.rm=T)
-                        temp1<- rowQuantiles(mat_odds,  prprobs = seq(0.025, 0.975),na.rm=T)
+                        temp1<- rowQuantiles(mat_odds,  probs = c(0.025, 0.975),na.rm=T)
                         print(paste("Looking at activity levels in layer ", s))
                         for (j in 1:Y_SIZE) {
                           for (i in 1:X_SIZE) {
@@ -241,6 +241,7 @@ print(no_cores)
                             active_mask2[i,j,s] <-  (max(mat_odds[count,],na.rm=T) - min(mat_odds[count,],na.rm=T))
                             active_mask3[i,j,s] <-  temp1[i,2]-temp1[i,1]
                             active_mask4[i,j,s] <-  var(mat_odds_filt[count,],na.rm=T)
+                            #print(c(active_mask1[i,j,s],active_mask2[i,j,s],active_mask3[i,j,s],active_mask4[i,j,s]))
                           }
                         }
                         print("saving")
