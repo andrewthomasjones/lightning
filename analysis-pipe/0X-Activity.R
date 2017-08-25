@@ -96,7 +96,7 @@ if(!file.exists(file=paste(outdir,'/D_Mask.rdata',sep=''))){
   MASK <- MASK[,,,1]
   ### Dummy Mask
   D_Mask <- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
-  
+
   for (s in Z_START:(Z_SIZE+Z_START)) {
     for (j in Y_START:(Y_SIZE+Y_START)) {
       for (i in X_START:(X_SIZE+X_START))  {
@@ -105,12 +105,12 @@ if(!file.exists(file=paste(outdir,'/D_Mask.rdata',sep=''))){
     }
   }
   ssDM <- sum(D_Mask)
-  
+
   save(ssDM, file=paste(outdir,'/ssDM.rdata',sep=''))
   save(MASK_hdr, file=paste(outdir,'/MASK_hdr.rdata',sep=''))
   save(D_Mask, file=paste(outdir,'/D_Mask.rdata',sep=''))
   f.write.nifti(D_Mask,file=paste0(outdir,'/binary_mask.nii'), nii=TRUE, L=header)
-  
+
 }else{
   load(file=paste(outdir,'/ssDM.rdata',sep=''))
   load(file=paste(outdir,'/MASK_hdr.rdata',sep=''))
@@ -128,8 +128,8 @@ print(no_cores)
 #Completed_output <- list.files(path=paste0(outdir, '/coeff_mats/'), pattern='coeff_mat', full.names=FALSE)
 #Completed_numbers<-(as.numeric(unlist(strsplit(unlist(Completed_output), "[^0-9]+")))
                     #print(Completed_numbers)
-                    
-                    
+
+
                     if(!file.exists(paste(outdir,'/MASK_active.rdata',sep=''))){
                       print("Creating mask files")
                       active_mask1 <- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
@@ -141,12 +141,12 @@ print(no_cores)
                     }else{
                       load(file=paste(outdir,'/MASK_active.rdata',sep=''))
                     }
-                    
-                    
-                    
+
+
+
                     ### Fit Splines to the time series in each of the slice files (s loops over slices)
                     for (s in k:Z_SIZE) {
-                      
+
                       print(mem_used())
                       rm(list = ls()[-c(which(ls()=="outdir"), which(ls()=="s"))])
                       gc()
@@ -157,16 +157,16 @@ print(no_cores)
                       load(file=paste(outdir,'/MASK_active.rdata',sep=''))
                       print(mem_used())
                       print(c('Doing ', s))
-                      
+
                       ### Get already existing outputs
                       Completed_output <- list.files(path=paste0(outdir, '/coeff_mats/'), pattern='coeff_mat', full.names=FALSE)
                       #Completed_output <- Completed_output[grep('coeff_mat',Completed_output)]
                       ### Skip things already in Completed_output
- 
+
                         file_number <- (file_number.old-1)*Z_SIZE +s
-                        
+
                         full_array <- list()
-                        
+
                         ### Read in Z slices
                         for (j in 1:N) {
                           file_name <- substring(file_list[j],1,12)
@@ -178,11 +178,11 @@ print(no_cores)
                           NIFTI <- f.read.nifti.slice(nii_name,s+Z_START,1)
                           full_array[[j]] <- NIFTI
                         }
-                        
-                        
+
+
                         ### Combine all of the time slices
                         full_array <- abind(full_array,along=3)
-                        
+
                         print('storing')
                         ### Store data into matrix instead of array
                         count <- 0
@@ -195,42 +195,42 @@ print(no_cores)
                           }
                         }
                         rm(full_array)
-                        
+
                         odds<-seq(1,ncol(full_mat),2)
                         ## take every second point
                         mat_odds<-full_mat[,odds]
                         mat_odds_detr<-array(NA,dim(mat_odds))
                         mat_odds_filt<-array(NA,dim(mat_odds))
-                        
+
                         snap_mips <- array(NA,c(X_SIZE,Y_SIZE))
                         snap_mips_detrend <- array(NA,c(X_SIZE,Y_SIZE))
                         snap_mips_filt <- array(NA,c(X_SIZE,Y_SIZE))
-                        
+
                         ### Detrend data
                         print('detrending')
                         count<-0
-                        
+
                         for (j in 1:Y_SIZE) {
                           for (i in 1:X_SIZE) {
                             count <- count + 1
                             mat_odds_detr[count,] <- detrend(mat_odds[count,], 'linear')
                           }
                         }
-                        
+
                         bf <- butter(5, (1/f1), type="high")
-                        
+
                         print('filtering')
                         count<-0
-                        
+
                         for (j in 1:Y_SIZE) {
                           for (i in 1:X_SIZE) {
                             count <- count + 1
                             mat_odds_filt[count,] <- filter(bf, mat_odds_detr[count,])
                           }
                         }
-                        
+
                         count<-0
-                        
+
                         #temp1<- quantile(mat_odds[count,], probs = seq(0.025, 0.975),na.rm=T)
                         temp1<- rowQuantiles(mat_odds,  probs = c(0.025, 0.975),na.rm=T)
                         print(paste("Looking at activity levels in layer ", s))
@@ -248,9 +248,8 @@ print(no_cores)
                         print(mem_used())
                         k<-s+1
                         save(active_mask1,active_mask2,active_mask3,active_mask4, k, file=paste(outdir,'/MASK_active.rdata',sep=''))
-                        
-                        
-                      }
-                      
 
-                      
+
+                      }
+
+

@@ -250,67 +250,70 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
     load(paste(outdir,'/time_series/temp_data.rdata',sep=''))
   }
   
-  for (s in k:Z_SIZE) {
-    
-    sink(file=paste(outdir,'/time_series/prog.txt',sep=''))
-    cat(s)
-    cat("\n")
-    sink()
-    print(paste("Loading slice",s,"of", Z_SIZE)) 
-    file_number <- (file_number.old-1)*Z_SIZE +s+Z_START
-    print(mem_used())  
-      full_array <- list()
+  if(k<Z_SIZE){
+    for (s in k:Z_SIZE) {
       
-      ### Read in Z slices
-      for (j in 1:N) {
-        file_name <- substring(file_list[j],1,12)
-        nii_name <- paste(indir3, '/', file_name,'.nii',sep='')
-        #print(c('reading',nii_name, s+Z_START,j,round(j/N),1))
-        NIFTI <- f.read.nifti.slice(nii_name,s+Z_START,1)
-        full_array[[j]] <- NIFTI
-      }
-      
-      ### Combine all of the time slices
-      full_array <- abind(full_array,along=3)
-      
-      s<-s+Z_START
-      for (j in 1:Y_SIZE) {
-        for (i in 1:X_SIZE) {
-          
-          if(D_Mask[i,j,s]==T){
-            
-            if(image_hold2[i,j,s]>0){
-              cluster_counts[image_hold2[i,j,s]]<-cluster_counts[image_hold2[i,j,s]]+1
-              count <- count + 1
-              #full_mat[count,] <- full_array[i+X_START,j+Y_START,]
-              temp2<-full_array[i+X_START,j+Y_START,]
-              temp2[is.nan(temp2)]<-0
-              cluster_mat[image_hold2[i,j,s],]<-cluster_mat[image_hold2[i,j,s],]+temp2
-              #x,y,z, cluster, 
-              meta_mat[count,] <- c(i,j,s,image_hold2[i,j,s])
-            }
-            
-            count_bg <- count_bg + 1
-            temp1<-full_array[i+X_START,j+Y_START,]
-            temp1[is.nan(temp1)]<-0
-            bg_mat[1,]<-bg_mat[1,]+temp1
-          
-
-            #bg_mat[2,]<-bg_mat[2,]+(temp1)^2
-          }
-          #print(c('storing',s,count))
+      sink(file=paste(outdir,'/time_series/prog.txt',sep=''))
+      cat(s)
+      cat("\n")
+      sink()
+      print(paste("Loading slice",s,"of", Z_SIZE)) 
+      file_number <- (file_number.old-1)*Z_SIZE +s+Z_START
+      print(mem_used())  
+        full_array <- list()
+        
+        ### Read in Z slices
+        for (j in 1:N) {
+          file_name <- substring(file_list[j],1,12)
+          nii_name <- paste(indir3, '/', file_name,'.nii',sep='')
+          #print(c('reading',nii_name, s+Z_START,j,round(j/N),1))
+          NIFTI <- f.read.nifti.slice(nii_name,s+Z_START,1)
+          full_array[[j]] <- NIFTI
         }
-      }
-      
-      rm(full_array)
-      k<-s+1
-      save(active_vox, count, count_bg, cluster_mat, cluster_counts, bg_mat, meta_mat, k, file= paste(outdir,'/time_series/temp_data.rdata',sep=''))
+        
+        ### Combine all of the time slices
+        full_array <- abind(full_array,along=3)
+        
+        s<-s+Z_START
+        for (j in 1:Y_SIZE) {
+          for (i in 1:X_SIZE) {
+            
+            if(D_Mask[i,j,s]==T){
+              
+              if(image_hold2[i,j,s]>0){
+                cluster_counts[image_hold2[i,j,s]]<-cluster_counts[image_hold2[i,j,s]]+1
+                count <- count + 1
+                #full_mat[count,] <- full_array[i+X_START,j+Y_START,]
+                temp2<-full_array[i+X_START,j+Y_START,]
+                temp2[is.nan(temp2)]<-0
+                cluster_mat[image_hold2[i,j,s],]<-cluster_mat[image_hold2[i,j,s],]+temp2
+                #x,y,z, cluster, 
+                meta_mat[count,] <- c(i,j,s,image_hold2[i,j,s])
+              }
+              
+              count_bg <- count_bg + 1
+              temp1<-full_array[i+X_START,j+Y_START,]
+              temp1[is.nan(temp1)]<-0
+              bg_mat[1,]<-bg_mat[1,]+temp1
+            
   
+              #bg_mat[2,]<-bg_mat[2,]+(temp1)^2
+            }
+            #print(c('storing',s,count))
+          }
+        }
+        
+        rm(full_array)
+        k<-s+1
+        save(active_vox, count, count_bg, cluster_mat, cluster_counts, bg_mat, meta_mat, k, file= paste(outdir,'/time_series/temp_data.rdata',sep=''))
+    
+    }
   }
-  
 
-  bg_mat[1,]<-bg_mat[1,]/count_bg
-  cluster_mat<-cluster_mat/cluster_counts
+  
+  bg_mat<-sweep(bg_mat, 1, count_bg, "/")
+  #cluster_mat<-cluster_mat/cluster_counts
+  cluster_mat<-sweep(cluster_mat, 1, cluster_counts, "/")
   
   print("Saving within cluster time series data") 
   save(cluster_mat,file=paste(outdir,'/time_series/main_data.rdata',sep=''))
@@ -327,7 +330,7 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
 #delta F
 #clusters
 cl<-length(table(meta_mat[,4]))
-time<-dim(full_mat)[2]
+time<-dim(cluster_mat)[2]
 means<-array(0, c(time,cl))
 sds<-array(0, c(time,cl))
 q1<-array(0, c(2, time,cl))
@@ -335,16 +338,16 @@ q1<-array(0, c(2, time,cl))
 
 for(i in 1:cl){
   
-  means[,i]<-colMeans(full_mat[meta_mat[,4]==i,])
+  means[,i]<-cluster_mat[i,]
   
-  sds[,i]<-sqrt(colMeans((full_mat[meta_mat[,4]==i,])^2)-(means[,i])^2)
+  #sds[,i]<-sqrt(colMeans((full_mat[meta_mat[,4]==i,])^2)-(means[,i])^2)
   
-  q1[,,i]<-t(colQuantiles(full_mat[meta_mat[,4]==i,], probs=c(.25,.75)))
+  #q1[,,i]<-t(colQuantiles(full_mat[meta_mat[,4]==i,], probs=c(.25,.75)))
   
 }
 
 evens<-as.vector((rep(c(F,T), length.out=time)))
-grand_mean<-mean(full_mat)
+grand_mean<-mean(bg_mat[1,])
 
 if(cl>1){
   CORR<-cor(means[evens==F,])
@@ -359,7 +362,8 @@ means<-cbind(means, (bg_mat[1,]))
   
 means2<-melt(means[evens==F,])
 names(means2)<-c("Index", "Cluster", "Value")
-means2$F0<-mean(bg_mat[1,])#means2$Value/grand_mean
+means2$F0<-means2$Value/mean((bg_mat[1,]))
+#means2$F0<-#
 freq<-5 #5hz
 
 means2$Seconds<-2*means2$Index/freq
