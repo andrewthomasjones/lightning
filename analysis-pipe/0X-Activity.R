@@ -130,16 +130,18 @@ print(no_cores)
                     #print(Completed_numbers)
 
 
-                    if(!file.exists(paste(outdir,'/MASK_active.rdata',sep=''))){
+                    if(!file.exists(paste(outdir,'/MASK_active_2.rdata',sep=''))){
                       print("Creating mask files")
-                      active_mask1 <- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
+                      #active_mask1 <- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
                       active_mask2 <- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
-                      active_mask3 <- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
-                      active_mask4 <- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
+                      #active_mask3 <- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
+                      #active_mask4 <- array(NA,c(X_SIZE,Y_SIZE, Z_SIZE))
                       k<-1
-                      save(active_mask1,active_mask2,active_mask3,active_mask4,k, file=paste(outdir,'/MASK_active.rdata',sep=''))
+                      #save(active_mask1,active_mask2,active_mask3,active_mask4,k, file=paste(outdir,'/MASK_active.rdata',sep=''))
+                      save(active_mask2, k, file=paste(outdir,'/MASK_active_2.rdata',sep=''))
+                      
                     }else{
-                      load(file=paste(outdir,'/MASK_active.rdata',sep=''))
+                      load(file=paste(outdir,'/MASK_active_2.rdata',sep=''))
                     }
 
 
@@ -154,7 +156,7 @@ print(no_cores)
                       load(file=paste(outdir,'/settings.rdata',sep=''))
                       load(file=paste(outdir,'/ssDM.rdata',sep=''))
                       load(file=paste(outdir,'/D_Mask.rdata',sep=''))
-                      load(file=paste(outdir,'/MASK_active.rdata',sep=''))
+                      load(file=paste(outdir,'/MASK_active_2.rdata',sep=''))
                       print(mem_used())
                       print(c('Doing ', s))
 
@@ -232,24 +234,38 @@ print(no_cores)
                         count<-0
 
                         #temp1<- quantile(mat_odds[count,], probs = seq(0.025, 0.975),na.rm=T)
-                        temp1<- rowQuantiles(mat_odds,  probs = c(0.025, 0.975),na.rm=T)
+                        #temp1<- rowQuantiles(mat_odds,  probs = c(0.025, 0.975),na.rm=T)
                         print(paste("Looking at activity levels in layer ", s))
                         for (j in 1:Y_SIZE) {
                           for (i in 1:X_SIZE) {
                             count <- count + 1
-                            active_mask1[i,j,s] <-  (max(mat_odds_filt[count,],na.rm=T) - min(mat_odds_filt[count,],na.rm=T))
+                            #active_mask1[i,j,s] <-  (max(mat_odds_filt[count,],na.rm=T) - min(mat_odds_filt[count,],na.rm=T))
                             active_mask2[i,j,s] <-  (max(mat_odds[count,],na.rm=T) - min(mat_odds[count,],na.rm=T))
-                            active_mask3[i,j,s] <-  temp1[i,2]-temp1[i,1]
-                            active_mask4[i,j,s] <-  var(mat_odds_filt[count,],na.rm=T)
+                            #active_mask4[i,j,s] <-  var(mat_odds_filt[count,],na.rm=T)
                             #print(c(active_mask1[i,j,s],active_mask2[i,j,s],active_mask3[i,j,s],active_mask4[i,j,s]))
                           }
                         }
                         print("saving")
                         print(mem_used())
                         k<-s+1
-                        save(active_mask1,active_mask2,active_mask3,active_mask4, k, file=paste(outdir,'/MASK_active.rdata',sep=''))
+                        #save(active_mask1,active_mask2,active_mask3,active_mask4, k, file=paste(outdir,'/MASK_active.rdata',sep=''))
+                        save(active_mask2, k, file=paste(outdir,'/MASK_active_2.rdata',sep=''))
+                        
 
+                    }
 
-                      }
+if(file.exists(paste(outdir,'/MASK_active_2.rdata',sep=''))){
+  load(file=paste(outdir,'/MASK_active_2.rdata',sep=''))
+  load(file=paste(outdir,'/D_Mask.rdata',sep=''))
+  load(file=paste(outdir,'/MASK_hdr.rdata',sep=''))
+  load(file=paste(outdir,'/Settings.rdata',sep=''))
+  
+  if(k==300){
+    active_mask2[is.na(active_mask2)]<-0
+    f.write.nifti(active_mask2,file=paste0(outdir,'/active_mask_fixed.nii'), nii=TRUE, L=header )
+  }
+  
+}
+
 
 

@@ -14,7 +14,7 @@ use File::Spec;
 die "Need an input dir" if !defined($ARGV[0]);
 $me = &basename($0, (".pl"));
 $input = "03-chunk02";
-$output = "0X-Testing";
+$output = "04-Splines";
 $idir = "$ARGV[0]/$input";
 $fold = $fold = (split "/", $ARGV[0])[5]; 
 $odir = "/data/nif02/uqajon14/$fold/$output";

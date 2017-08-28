@@ -312,7 +312,7 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
 
   
   bg_mat<-sweep(bg_mat, 1, count_bg, "/")
-  #cluster_mat<-cluster_mat/cluster_counts
+  #cluster_mat<-cluster_mat/cluster_counts  
   cluster_mat<-sweep(cluster_mat, 1, cluster_counts, "/")
   
   print("Saving within cluster time series data") 
