@@ -36,6 +36,7 @@ indir<-indir_new
 
 max_clust<-30 #speed up by making this look at smaller
 cut_p<-0.04
+throw<-0.75
 
 # X_START <- 0
 # Y_START <- 0
@@ -68,7 +69,7 @@ dir.create(paste0(outdir,'/cluster_functions/'))
 load(file=paste(indir,'/ssDM.rdata',sep=''))
 load(file=paste(indir,'/MASK_hdr.rdata',sep=''))
 load(file=paste(indir,'/D_Mask.rdata',sep=''))
-load(file=paste(indir,'/MASK_active.rdata',sep=''))
+load(file=paste(indir,'/MASK_active_2.rdata',sep=''))
 
 if(!file.exists(paste0(outdir,'/clustering.rdata'))){
  
@@ -133,7 +134,7 @@ if(!file.exists(paste0(outdir,'/clustering.rdata'))){
       for (kk in (start_kk:max_clust)) {
         # Conduct timing while computing BIC values
         TIME <- proc.time()
-        BIC_Temp<- cluster_BIC(big_mat,tkmeans(big_mat,kk,.9 ))
+        BIC_Temp<- cluster_BIC(big_mat,tkmeans(big_mat,kk,throw ))
         #print(BIC_Temp)
         BIC_val[kk] <- BIC_Temp
         #print(BIC_val[kk])
@@ -165,7 +166,7 @@ if(!file.exists(paste0(outdir,'/clustering.rdata'))){
     n_starts  = 5
  
     
-    clustering<-tkmeans(big_mat, comp, .9, nstart = n_starts)
+    clustering<-tkmeans(big_mat, comp, throw, nstart = n_starts)
     #save centres
     save(clustering,file=paste0(outdir,'/centers.rdata'))
     print("Clustering Done")
