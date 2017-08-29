@@ -73,11 +73,11 @@ load(file=paste(indir,'/MASK_active_2.rdata',sep=''))
 
 if(!file.exists(paste0(outdir,'/clustering.rdata'))){
  
-  cutoff<-quantile(active_mask[D_Mask], probs=1-cut_p, na.rm=T) 
-  active_mask2 <- active_mask > cutoff
-  active_mask2[ is.na(active_mask2) ] <- FALSE
-  save(active_mask2,file=paste(outdir,'/MASK_active_adjusted.rdata',sep=''))
-  ssDM_active <-sum(active_mask2 & D_Mask)
+  cutoff<-quantile(active_mask2[D_Mask], probs=1-cut_p, na.rm=T) 
+  active_mask3 <- active_mask2 > cutoff
+  active_mask3[ is.na(active_mask3) ] <- FALSE
+  save(active_mask3,file=paste(outdir,'/MASK_active_adjusted.rdata',sep=''))
+  ssDM_active <-sum(active_mask3 & D_Mask)
   save(ssDM_active,file=paste(outdir,'/ssDM_active.rdata', sep=''))
   print(paste("Total voxels ", ssDM_active))
   
@@ -92,7 +92,7 @@ if(!file.exists(paste0(outdir,'/clustering.rdata'))){
     for (j in 1:Y_SIZE) {
       for (i in 1:X_SIZE) {
         InCount <- InCount + 1
-        if(D_Mask[i,j,s] & active_mask2[i,j,s]) {
+        if(D_Mask[i,j,s] & active_mask3[i,j,s]) {
           Count <- Count + 1
           big_mat[Count,] <- coeff_mat[InCount,]
         }
@@ -199,7 +199,7 @@ for (s in 1:Z_SIZE) {
   for (j in 1:Y_SIZE) {
     for (i in 1:X_SIZE) {
       InCount <- InCount + 1
-      if(D_Mask[i,j,s] & active_mask2[i,j,s]) {
+      if(D_Mask[i,j,s] & active_mask3[i,j,s]) {
         Count <- Count + 1
         big_mat[Count,] <- coeff_mat[InCount,]
       }
@@ -224,7 +224,7 @@ Count <- 0
 for (s in 1:Z_SIZE) {
   for (j in 1:Y_SIZE) {
     for (i in 1:X_SIZE) {
-      if (D_Mask[i,j,s] & active_mask2[i,j,s]) {
+      if (D_Mask[i,j,s] & active_mask3[i,j,s]) {
         Count <- Count + 1
         image_hold[i,j,s] <- clustering_cluster[Count]
       }
@@ -237,8 +237,8 @@ image_hold[is.na(image_hold)]<-0
 
 f.write.nifti(image_hold,file=paste0(outdir,'/clusters/clusters.nii'), nii=TRUE, L=header)
 
-active_mask2[is.na(active_mask2)]<-0
-f.write.nifti(active_mask2,file=paste0(outdir,'/active_mask_adjusted.nii'), nii=TRUE, L=header )
+active_mask3[is.na(active_mask3)]<-0
+f.write.nifti(active_mask3,file=paste0(outdir,'/active_mask_adjusted.nii'), nii=TRUE, L=header )
 
 for(g in 1:comp){
   temp_mat<-array(0,dim(image_hold))
