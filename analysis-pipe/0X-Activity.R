@@ -145,7 +145,7 @@ print(no_cores)
                     }
 
 
-
+    if(k<=Z_SIZE){
                     ### Fit Splines to the time series in each of the slice files (s loops over slices)
                     for (s in k:Z_SIZE) {
 
@@ -253,6 +253,7 @@ print(no_cores)
                         
 
                     }
+    }
 
 if(file.exists(paste(outdir,'/MASK_active_2.rdata',sep=''))){
   load(file=paste(outdir,'/MASK_active_2.rdata',sep=''))
@@ -260,7 +261,7 @@ if(file.exists(paste(outdir,'/MASK_active_2.rdata',sep=''))){
   load(file=paste(outdir,'/MASK_hdr.rdata',sep=''))
   load(file=paste(outdir,'/Settings.rdata',sep=''))
   
-  if(k==300){
+  if(k>=Z_SIZE){
     active_mask2[is.na(active_mask2)]<-0
     f.write.nifti(active_mask2,file=paste0(outdir,'/active_mask_fixed.nii'), nii=TRUE, L=header )
   }
