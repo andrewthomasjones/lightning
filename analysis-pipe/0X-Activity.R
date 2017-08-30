@@ -259,7 +259,7 @@ if(file.exists(paste(outdir,'/MASK_active_2.rdata',sep=''))){
   load(file=paste(outdir,'/MASK_active_2.rdata',sep=''))
   load(file=paste(outdir,'/D_Mask.rdata',sep=''))
   load(file=paste(outdir,'/MASK_hdr.rdata',sep=''))
-  load(file=paste(outdir,'/Settings.rdata',sep=''))
+  load(file=paste(outdir,'/settings.rdata',sep=''))
   
   if(k>=Z_SIZE){
     active_mask2[is.na(active_mask2)]<-0
