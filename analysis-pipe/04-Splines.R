@@ -233,7 +233,7 @@ for (s in 1:Z_SIZE) {
     }
   
     print(mem_used())
-    save(active_mask,file=paste(outdir,'/MASK_active.rdata',sep=''))
+    save(active_mask2,file=paste(outdir,'/MASK_active.rdata',sep=''))
     save(snap_mips, file=paste(outdir,'/mips/snap_mips_',s,'.rdata',sep=''))
     save(snap_mips_detrend, file=paste(outdir,'/mips/snap_mips_detrend_',s,'.rdata',sep=''))
     save(snap_mips_filt, file=paste(outdir,'/mips/snap_mips_filt_',s,'.rdata',sep=''))
@@ -320,6 +320,9 @@ if(!file.exists(file=paste0(outdir,'/mips/time_mips.nii'))){
   f.write.nifti(mips,file=paste0(outdir,'/time_mips.nii'), nii=TRUE, L=header)
   f.write.nifti(mips_detrend,file=paste0(outdir,'/time_mips_detrended.nii'), nii=TRUE,L=header )
   f.write.nifti(mips_filt,file=paste0(outdir,'/time_mips_filter_detrended.nii'), nii=TRUE,L=header )
+  load(file=paste(outdir,'/MASK_active.rdata',sep=''))
+  active_mask2[is.na(active_mask2)]<-0
+  f.write.nifti(active_mask2,file=paste0(outdir,'/active_mask_fixed.nii'), nii=TRUE, L=header )
 }
 
 print("04-Rstats02.R complete.")
