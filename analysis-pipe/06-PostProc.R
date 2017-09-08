@@ -40,6 +40,8 @@ indir3<-indir_new_3
 max_clust<-30 #speed up by making this look at smaller
 cut_p<-0.04
 merge_height<-0.45  
+goal_k<-11
+
 
 print(c('1indir', indir))
 print(c('2outdir', outdir))
@@ -150,11 +152,14 @@ if(!file.exists(paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))){
   print(HCLUST$height)
   save(HCLUST, file=paste(outdir,'/clusters/tree.rdata',sep=''))
   
-  
+  n_merge <- comp-goal_k
+  k<-0
   merge_list<-array(0, comp-1)
   for (i in 1:(comp-1)){
     
-    if (HCLUST$height[i] < merge_height){
+    #if (HCLUST$height[i] < merge_height){
+    if(k<n_merge){
+    k<-k+1  
     print(paste("Merge", i,": "))  
       if (HCLUST$merge[i,1]<0 & HCLUST$merge[i,2]<0){
         image_hold[image_hold== -HCLUST$merge[i,2]]<- -HCLUST$merge[i,1]
@@ -369,12 +374,16 @@ freq<-5 #5hz
 means2$Seconds<-2*means2$Index/freq
 means2$Cluster<-factor(means2$Cluster)
 levels(means2$Cluster)[length(levels(means2$Cluster))]<-"Background"
+
+save(means2$Cluster,file=paste(outdir,'/time_series/time_series_plot_data.rdata',sep=''))
+
+samp_name<-basename(dirname(outdir))
+
+
 # Plots
 plot<-ggplot(data=means2, aes(y=F0,x=Seconds, colour=Cluster))+geom_line()+theme_bw()
 
-
-
-pdf(paste(outdir,'/Mean_time_series_by_cluster.pdf',sep=''),paper='a4r')
+pdf(paste(outdir,'/', samp_name, 'Mean_time_series_by_cluster_.pdf',sep=''),paper='a4r')
 print(plot)
 dev.off()
 
@@ -388,10 +397,11 @@ clust_n<-length(levels(means2$Cluster))
 for(i in 1:clust_n){
   temp<-subset(means2, as.numeric(means2$Cluster)==i)
   plot<-ggplot(data=temp, aes(y=F0,x=Seconds))+geom_line()+theme_bw()
-  pdf(paste(outdir,'/Mean_time_cluster', levels(means2$Cluster)[i] ,'.pdf',sep=''),paper='a4r')
+  pdf(paste(outdir,'/', samp_name, 'Mean_time_cluster', levels(means2$Cluster)[i] ,'.pdf',sep=''),paper='a4r')
   print(plot)
   dev.off()
 }
+
 
 
 for(i in 1:clust_n){
@@ -402,14 +412,14 @@ for(i in 1:clust_n){
     temp$min<-q1[1,evens==F,i]/grand_mean
     temp$max<-q1[2,evens==F,i]/grand_mean
     plot<-ggplot(data=temp, aes(y=F0,x=Seconds))+geom_line()+theme_bw()+geom_ribbon(aes(ymin=min, ymax=max), alpha=0.3)+ggtitle(paste0("Cluster ", levels(means2$Cluster)[i]), "\n with centre 50% empirical distribution")
-    pdf(paste(outdir,'/Mean_time_cluster', levels(means2$Cluster)[i] ,'_with_interval.pdf',sep=''),paper='a4r')
+    pdf(paste(outdir,'/', samp_name, 'Mean_time_cluster', levels(means2$Cluster)[i] ,'_with_interval.pdf',sep=''),paper='a4r')
     print(plot)
     dev.off()
   }else{
     temp$min<-temp$F0-.77*sqrt(bg_mat[2,evens==F])/grand_mean
     temp$max<-temp$F0+.77*sqrt(bg_mat[2,evens==F])/grand_mean
     plot<-ggplot(data=temp, aes(y=F0,x=Seconds))+geom_line()+theme_bw()+geom_ribbon(aes(ymin=min, ymax=max), alpha=0.3)+ggtitle(paste0("Cluster ", levels(means2$Cluster)[i]), "\n with centre 50% normal CI")
-    pdf(paste(outdir,'/Mean_time_cluster', levels(means2$Cluster)[i] ,'_with_interval.pdf',sep=''),paper='a4r')
+    pdf(paste(outdir,'/', samp_name, 'Mean_time_cluster', levels(means2$Cluster)[i] ,'_with_interval.pdf',sep=''),paper='a4r')
     print(plot)
     dev.off()
   }

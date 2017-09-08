@@ -309,7 +309,7 @@ do_slice<-function(s, outdir){
 
 print(mem_used())
 # Calculate the number of cores
-max_cores <- min(detectCores()-1,10)
+max_cores <- min(detectCores()-1,6)
 
 
 while(length(Incomplete_slices)>0){

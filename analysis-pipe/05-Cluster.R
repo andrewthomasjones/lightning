@@ -34,9 +34,12 @@ load(file=paste(indir_new,'/settings.rdata',sep=''))
 outdir<-outdir_new
 indir<-indir_new
 
-max_clust<-30 #speed up by making this look at smaller
+min_clust<-11 #orig was 2
+max_clust<-50 #speed up by making this look at smaller
 cut_p<-0.04
-throw<-0.75
+throw<-0.8
+
+
 
 # X_START <- 0
 # Y_START <- 0
@@ -116,6 +119,7 @@ if(!file.exists(paste0(outdir,'/clustering.rdata'))){
     ### Compute BIC over a range of K (here 50--100)
     
     BIC_val <- array(0, max_clust)
+    BIC_k <- 1:max_clust
     TIME_STORE <- array(0, max_clust)
     
     #load(file=paste(outdir,'/settings.rdata',sep=''))
@@ -144,7 +148,7 @@ if(!file.exists(paste0(outdir,'/clustering.rdata'))){
         print(c(kk,BIC_val[kk]))
         # Save the results
         save(TIME_STORE,file=paste0(outdir,'/Time_store.rdata'))
-        save(BIC_val,file=paste0(outdir,'/BIC_values.rdata'))
+        save(BIC_val,BIC_k,file=paste0(outdir,'/BIC_values.rdata'))
       }
     }
     
@@ -153,12 +157,14 @@ if(!file.exists(paste0(outdir,'/clustering.rdata'))){
     ### Get the optimal K and computer clustering under optimal K
     n <- dim(big_mat)[1]
     m <- Basis_number
-    BIC_val<-BIC_val[-1]
-    neg_like <- BIC_val - log(n)*(m*(1:length(BIC_val)))
+    BIC_val<-BIC_val[-(1:(min_clust-1))]
+    BIC_k<-BIC_k[-(1:(min_clust-1))]
+    
+    neg_like <- BIC_val - log(n)*(m*(BIC_k))
     log_like <- neg_like/(2)
     ave_log_like <- log_like/n
-    names_vec <- (1:length(BIC_val))+1
-    complexity_h <- shape_h <- (m*(1:length(BIC_val)))
+    names_vec <- (BIC_k)
+    complexity_h <- shape_h <- (m*(BIC_k))
     SHDATA <- cbind(names_vec, shape_h, complexity_h, ave_log_like)
     DD <- DDSE(SHDATA)
     comp <- as.numeric(attributes(DD)$model)
