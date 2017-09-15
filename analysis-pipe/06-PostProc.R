@@ -20,9 +20,10 @@ library(capushe)
 library(pryr)
 library(lowmemtkmeans)
 library(matrixStats)
+
 ### Parse CMD Line Arguments
 args <- commandArgs(trailingOnly = TRUE)
-indir_new <- args[1] # $input = "04-Splines"; 
+indir_new <- args[1] # $input = "04-Splines";
 outdir_new <- args[2]
 FROM <- as.numeric(args[3])
 TO <- as.numeric(args[4])
@@ -39,7 +40,7 @@ indir3<-indir_new_3
 
 max_clust<-30 #speed up by making this look at smaller
 cut_p<-0.04
-merge_height<-0.45  
+merge_height<-0.45
 goal_k<-11
 
 
@@ -81,32 +82,32 @@ centers <-sweep(sweep(centers,2,mean_sd_from_unscaled[2,],'*'),2,mean_sd_from_un
 ###########################################
 if(!file.exists(paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))){
 
-  
+
   # ### CLUSTER MERGING
-  
-  
+
+
   file_number <- (file_number.old -1)*Z_SIZE + Z_SIZE
   Basis <- create.bspline.basis(c(0,(max_file-1)*Z_SIZE+Z_SIZE),nbasis=Basis_number)
   BS <- eval.basis(file_number,Basis)
-  
+
   pred_range <- eval.basis(seq(from=1,to=((max_file-1)*Z_SIZE+Z_SIZE),length.out=1000),Basis)
-  
+
   # Each row is a mean time series over the pred_range values
   PRED <- matrix(NA,dim(centers)[1],dim(pred_range)[1])
   for (j in 1:dim(centers)[1]) {
     PRED[j,] <- apply(pred_range,1,function(x) {sum(x*centers[j,])})
   }
-  
+
   # The time average values of each series
   MEAN_PRED <- rowMeans(PRED)
-  
+
   ### Make a set of functions for evaluating splines and convolutions of splines
   Spline_function <- function(x,cc) {sum(eval.basis(x,Basis)*centers[cc,])}
   S1 <- function(x) Spline_function(x,1)
   S2 <- function(x) Spline_function(x,2)
   S_Prod <- function(x) S1(x)*S2(x)
   # INTEGRAL <- integrate(Vectorize(S_Prod),1,(max_file-1)*Z_SIZE+Z_SIZE)$value
-  
+
   ### Compute the Covariance of each mean function
   COVAR <- c()
   for (cc in 1:dim(centers)[1]) {
@@ -116,7 +117,7 @@ if(!file.exists(paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))){
     INTEGRAL <- quadv(S_Prod,1,(max_file-1)*Z_SIZE+Z_SIZE)$Q
     COVAR[cc] <- INTEGRAL
   }
-  
+
   comp<-dim(centers)[1]
   ### Compute the Correlation between pairs of mean functions
   CORR <- matrix(NA,comp,comp)
@@ -140,27 +141,27 @@ if(!file.exists(paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))){
       }
     }
   }
-  
-  
+
+
     # Hierachical Clustering ------------------------------
     # # Make a distance metric
     DIST <- as.dist(1-t(CORR))
     HCLUST <- hclust(DIST,method='average')
-  
-  
+
+
   print(HCLUST$merge)
   print(HCLUST$height)
   save(HCLUST, file=paste(outdir,'/clusters/tree.rdata',sep=''))
-  
+
   n_merge <- comp-goal_k
   k<-0
   merge_list<-array(0, comp-1)
   for (i in 1:(comp-1)){
-    
+
     #if (HCLUST$height[i] < merge_height){
     if(k<n_merge){
-    k<-k+1  
-    print(paste("Merge", i,": "))  
+    k<-k+1
+    print(paste("Merge", i,": "))
       if (HCLUST$merge[i,1]<0 & HCLUST$merge[i,2]<0){
         image_hold[image_hold== -HCLUST$merge[i,2]]<- -HCLUST$merge[i,1]
         merge_list[i]<- -HCLUST$merge[i,1]
@@ -174,34 +175,34 @@ if(!file.exists(paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))){
       if (HCLUST$merge[i,1]>0 & HCLUST$merge[i,2]>0){
         image_hold[image_hold== merge_list[HCLUST$merge[i,1]]]<- merge_list[HCLUST$merge[i,2]]
         merge_list[i]<-merge_list[HCLUST$merge[i,2]]
-        print(paste(merge_list[HCLUST$merge[i,1]],  "into", merge_list[HCLUST$merge[i,2]])) 
+        print(paste(merge_list[HCLUST$merge[i,1]],  "into", merge_list[HCLUST$merge[i,2]]))
       }
-      
-      
+
+
     }
-    
+
   }
-  
+
   tab<-table(image_hold)
   cl<-length(tab)
-  
-  
-  
-  print("Saving merged clusters")  
+
+
+
+  print("Saving merged clusters")
   image_hold[is.na(image_hold)]<-0
   f.write.nifti(image_hold,file=paste0(outdir,'/clusters/clusters_merge_orignal_numbering.nii'), nii=TRUE, L=header)
-  
+
   image_hold2<-image_hold
   print(cl)
-  
+
   for(g in 1:cl){
     image_hold2[image_hold2==as.numeric(names(tab))[g]]<-(g)
   }
-  
+
   tab<-table(image_hold2)
   cl<-length(tab)
   print(tab)
-  
+
   for(g in 1:cl){ #need to skip background
     temp_mat<-array(0,dim(image_hold2))
     temp_mat[image_hold2==as.numeric(names(tab))[g]]<-1
@@ -209,29 +210,31 @@ if(!file.exists(paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))){
       f.write.nifti(temp_mat,file=paste0(outdir,'/clusters/cluster_', g-1 ,'mask.nii'), nii=TRUE, L=header )
     }
   }
-  
+
   # Plot Frequency Histogram
   pdf(paste0(outdir,'/clusters/Frequency_of_clusters.pdf',sep=''),paper='a4r')
   plot(table(image_hold2)[-1],xlab='cluster',ylab='Frequency')
   dev.off()
 
-  
+
   f.write.nifti(image_hold2,file=paste0(outdir,'/clusters/clusters_merge.nii'), nii=TRUE, L=header)
   tab<-table(image_hold2)
   cl<-length(tab)
   print(tab)
   save(image_hold2,file=paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))
-  
+
 }else{
   load(file=paste(outdir,'/clusters/image_hold_merge.rdata',sep=''))
   load(file=paste(outdir,'/clusters/tree.rdata',sep=''))
-  
+
 }
 
 ###########################################
+print(paste(outdir,'/time_series/bg_data.rdata',sep=''))
+
 if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
   if(!file.exists(paste(outdir,'/time_series/temp_data.rdata',sep=''))){
-    print("Reloading raw time series data") 
+    print("Reloading raw time series data")
     tab<-table(image_hold2)
     cl<-length(tab)
     print(tab)
@@ -244,29 +247,29 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
     #full_mat <- matrix(NA,active_vox,N)
     bg_mat <- matrix(0,2,N)
     meta_mat <- matrix(NA,active_vox,4)
-    
+
     cluster_mat <- matrix(0,cl,N)
     cluster_counts <- matrix(0,cl,1)
     k=1
-    
+
   }else{
-    print("Reloading raw time series data") 
-    print(paste(outdir,'/time_series/temp_data.rdata',sep='')) 
+    print("Reloading raw time series data")
+    print(paste(outdir,'/time_series/temp_data.rdata',sep=''))
     load(paste(outdir,'/time_series/temp_data.rdata',sep=''))
   }
-  
+
   if(k<Z_SIZE){
     for (s in k:Z_SIZE) {
-      
+
       sink(file=paste(outdir,'/time_series/prog.txt',sep=''))
       cat(s)
       cat("\n")
       sink()
-      print(paste("Loading slice",s,"of", Z_SIZE)) 
+      print(paste("Loading slice",s,"of", Z_SIZE))
       file_number <- (file_number.old-1)*Z_SIZE +s+Z_START
-      print(mem_used())  
-        full_array <- list()
-        
+      print(mem_used())
+      full_array <- list()
+
         ### Read in Z slices
         for (j in 1:N) {
           file_name <- substring(file_list[j],1,12)
@@ -275,16 +278,16 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
           NIFTI <- f.read.nifti.slice(nii_name,s+Z_START,1)
           full_array[[j]] <- NIFTI
         }
-        
+
         ### Combine all of the time slices
         full_array <- abind(full_array,along=3)
-        
+
         s<-s+Z_START
         for (j in 1:Y_SIZE) {
           for (i in 1:X_SIZE) {
-            
+
             if(D_Mask[i,j,s]==T){
-              
+
               if(image_hold2[i,j,s]>0){
                 cluster_counts[image_hold2[i,j,s]]<-cluster_counts[image_hold2[i,j,s]]+1
                 count <- count + 1
@@ -292,35 +295,35 @@ if(!file.exists(paste(outdir,'/time_series/bg_data.rdata',sep=''))){
                 temp2<-full_array[i+X_START,j+Y_START,]
                 temp2[is.nan(temp2)]<-0
                 cluster_mat[image_hold2[i,j,s],]<-cluster_mat[image_hold2[i,j,s],]+temp2
-                #x,y,z, cluster, 
+                #x,y,z, cluster,
                 meta_mat[count,] <- c(i,j,s,image_hold2[i,j,s])
               }
-              
+
               count_bg <- count_bg + 1
               temp1<-full_array[i+X_START,j+Y_START,]
               temp1[is.nan(temp1)]<-0
               bg_mat[1,]<-bg_mat[1,]+temp1
-            
-  
+
+
               #bg_mat[2,]<-bg_mat[2,]+(temp1)^2
             }
             #print(c('storing',s,count))
           }
         }
-        
+
         rm(full_array)
         k<-s+1
         save(active_vox, count, count_bg, cluster_mat, cluster_counts, bg_mat, meta_mat, k, file= paste(outdir,'/time_series/temp_data.rdata',sep=''))
-    
+
     }
   }
 
-  
+
   bg_mat<-sweep(bg_mat, 1, count_bg, "/")
-  #cluster_mat<-cluster_mat/cluster_counts  
+  #cluster_mat<-cluster_mat/cluster_counts
   cluster_mat<-sweep(cluster_mat, 1, cluster_counts, "/")
-  
-  print("Saving within cluster time series data") 
+
+  print("Saving within cluster time series data")
   save(cluster_mat,file=paste(outdir,'/time_series/main_data.rdata',sep=''))
   save(meta_mat,file=paste(outdir,'/time_series/meta_data.rdata',sep=''))
   save(bg_mat,file=paste(outdir,'/time_series/bg_data.rdata',sep=''))
@@ -342,13 +345,13 @@ q1<-array(0, c(2, time,cl))
 
 
 for(i in 1:cl){
-  
+
   means[,i]<-cluster_mat[i,]
-  
+
   #sds[,i]<-sqrt(colMeans((full_mat[meta_mat[,4]==i,])^2)-(means[,i])^2)
-  
+
   #q1[,,i]<-t(colQuantiles(full_mat[meta_mat[,4]==i,], probs=c(.25,.75)))
-  
+
 }
 
 evens<-as.vector((rep(c(F,T), length.out=time)))
@@ -362,9 +365,9 @@ if(cl>1){
   dev.off()
 }
 
-    
+
 means<-cbind(means, (bg_mat[1,]))
-  
+
 means2<-melt(means[evens==F,])
 names(means2)<-c("Index", "Cluster", "Value")
 means2$F0<-means2$Value/mean((bg_mat[1,]))
@@ -375,7 +378,7 @@ means2$Seconds<-2*means2$Index/freq
 means2$Cluster<-factor(means2$Cluster)
 levels(means2$Cluster)[length(levels(means2$Cluster))]<-"Background"
 
-save(means2$Cluster,file=paste(outdir,'/time_series/time_series_plot_data.rdata',sep=''))
+save(means2,file=paste(outdir,'/time_series/time_series_plot_data.rdata',sep=''))
 
 samp_name<-basename(dirname(outdir))
 
@@ -407,7 +410,7 @@ for(i in 1:clust_n){
 for(i in 1:clust_n){
   # #whole brain
   temp<-subset(means2, as.numeric(means2$Cluster)==i)
-  
+
   if(i !=clust_n){
     temp$min<-q1[1,evens==F,i]/grand_mean
     temp$max<-q1[2,evens==F,i]/grand_mean
@@ -423,7 +426,7 @@ for(i in 1:clust_n){
     print(plot)
     dev.off()
   }
-  # 
+  #
 
 }
 ###########################################
