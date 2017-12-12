@@ -64,16 +64,21 @@ a<-"/five"
 b<-"/eleven"
 c<-"/reduce"
 
-goal_k<-NULL
+
 
 folders<-c(a,b,c)
 
 for(fold in folders){
-
-  if(fold =="/five" ){
+    
+  goal_k<-NULL
+    
+  print(fold)
+  if(fold == "/five" ){
+      
     goal_k<-5
 
   }
+  
   if(fold =="/eleven" ){
     goal_k<-11
 
@@ -101,7 +106,8 @@ for(fold in folders){
   load(file=paste(indir2,'/clusters/image_hold.rdata', sep=''))
   centers <- clustering
   centers <-sweep(sweep(centers,2,mean_sd_from_unscaled[2,],'*'),2,mean_sd_from_unscaled[1,], '+')
-
+  
+  
 
   ###########################################
   if(!file.exists(paste(outdir2,'/clusters/image_hold_merge.rdata',sep=''))){
@@ -177,17 +183,19 @@ for(fold in folders){
     print(HCLUST$height)
     save(HCLUST, file=paste(outdir2,'/clusters/tree.rdata',sep=''))
 
-
+    print(goal_k)
+    
     if(!is.null(goal_k)){
 
       n_merge <- comp-goal_k
       k<-0
+      
       merge_list<-array(0, comp-1)
 
       for (i in 1:(comp-1)){
 
-       if (HCLUST$height[i] < merge_height){
-       #if(k<n_merge){
+       #if (HCLUST$height[i] < merge_height){
+       if(k<n_merge){
         k<-k+1
         print(paste("Merge", i,": "))
           if (HCLUST$merge[i,1]<0 & HCLUST$merge[i,2]<0){
