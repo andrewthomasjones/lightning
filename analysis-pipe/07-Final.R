@@ -101,57 +101,77 @@ centers <-sweep(sweep(centers,2,mean_sd_from_unscaled[2,],'*'),2,mean_sd_from_un
 load(file=paste(outdir2,'/clusters/image_hold_merge.rdata',sep=''))
 load(file=paste(outdir2,'/clusters/tree.rdata',sep=''))
 
+print(table(image_hold2))
+
+
 if(file.exists(file= paste(outdir2,'/time_series/temp_data2.rdata',sep=''))){  
   load(file= paste(outdir2,'/time_series/temp_data2.rdata',sep=''))
 }else{
     k=1
     clust_members <-sum(image_hold2==clust_ID)
-    full_mat<-matrix(NA, c(clust_members, N))
-    meta_mat<-matrix(NA, c(clust_members ,4))
+    full_mat<-matrix(NA, nrow = clust_members, ncol = TO-FROM)
+    meta_mat<-matrix(NA, nrow = clust_members, ncol =4)
     count<-0
 }
     if(k<Z_SIZE){
       for (s in k:Z_SIZE){
-
+          
+        s<-s+Z_START
+        temp1<-image_hold2[,,s]
+        
         sink(file=paste(outdir2,'/time_series/prog2.txt',sep=''))
         cat(s)
         cat("\n")
         sink()
-        print(paste("Loading slice",s,"of", Z_SIZE))
-        file_number <- (file_number.old-1)*Z_SIZE +s+Z_START
-        print(mem_used())
-        full_array <- list()
-
-          ### Read in Z slices
-          for (j in 1:N) {
-            file_name <- substring(file_list[j],1,12)
-            nii_name <- paste(indir3, '/', file_name,'.nii',sep='')
-            print(c('reading',nii_name, s+Z_START,j,round(j/N),1))
-            NIFTI <- f.read.nifti.slice(nii_name,s+Z_START,1)
-            full_array[[j]] <- NIFTI
-          }
-
-          ### Combine all of the time slices
-          full_array <- abind(full_array,along=3)
-
-          s<-s+Z_START
-          temp1<-image_hold2[,,s]
-          
-          for (j in 1:Y_SIZE) {
-            for (i in 1:X_SIZE) {
-      
-              if(temp1[i,j]==clust_ID){
-                  temp2<-full_array[i+X_START,j+Y_START,]
-                  temp2[is.nan(temp2)]<-0
-                  full_mat[count,] <- temp2
-                  meta_mat[count,] <- c(i,j,s,image_hold2[i,j,s])
-                  count<-count+1
+        
+        print(paste("Checking slice",s,"of", Z_SIZE))
+        
+        if(any(temp1==clust_ID)){
+    
+            print(paste("Loading slice",s,"of", Z_SIZE))
+            file_number <- (file_number.old-1)*Z_SIZE +s+Z_START
+            print(mem_used())
+            full_array <- list()
+    
+              ### Read in Z slices
+              for (j in 1:N) {
+                file_name <- substring(file_list[j],1,12)
+                nii_name <- paste(indir3, '/', file_name,'.nii',sep='')
+                print(c('reading',nii_name, s+Z_START,j,round(j/N),1))
+                NIFTI <- f.read.nifti.slice(nii_name,s+Z_START,1)
+                full_array[[j]] <- NIFTI
               }
-              #print(c('storing',s,count))
-            }
-          }
+    
+              ### Combine all of the time slices
+              full_array <- abind(full_array,along=3)
+    
+              
+              
+              for (j in 1:Y_SIZE) {
+                for (i in 1:X_SIZE) {
+          
+                  if(temp1[i,j]==clust_ID){
 
-          rm(full_array)
+                      temp2<-full_array[i+X_START,j+Y_START,]
+
+                      temp2[is.nan(temp2)]<-0
+                      
+                      # print(dim(full_array))
+                      # print(dim(full_mat))
+                      # print(length(temp2))
+                     
+                      full_mat[count,] <- temp2
+                      meta_mat[count,] <- c(i,j,s,image_hold2[i,j,s])
+                      count<-count+1
+                      
+                  }
+                  #print(c('storing',s,count))
+                }
+              }
+    
+              rm(full_array)
+          }
+          
           k<-s-Z_START+1
           
           save(full_mat, meta_mat, k, count,  file= paste(outdir2,'/time_series/temp_data2.rdata',sep=''))
